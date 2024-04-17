@@ -207,6 +207,7 @@ export affine_space
 export alexander_dual
 export algebraic_ideal
 export algebraic_matrix
+export algebraic_matroid
 export algebraic_pluecker_vector
 export algebraic_polynomial
 export algebraic_set
@@ -760,7 +761,7 @@ export is_finalized
 export is_finite, has_is_finite, set_is_finite
 export is_finite_dimensional_vector_space
 export is_finitely_generated, has_is_finitely_generated, set_is_finitely_generated
-export is_finiteorder
+export is_finite_order
 export is_flat
 export is_full_direct_product
 export is_full_fp_group
@@ -959,6 +960,7 @@ export matroid_from_hyperplanes
 export matroid_from_matrix_columns
 export matroid_from_matrix_rows
 export matroid_from_nonbases
+export matroid_from_prime_ideal
 export matroid_from_revlex_basis_encoding
 export matroid_groundset
 export max_GC_rank_polytope
@@ -1085,6 +1087,7 @@ export number_of_primitive_groups, has_number_of_primitive_groups
 export number_of_small_groups, has_number_of_small_groups
 export number_of_standard_tableaux
 export number_of_transitive_groups, has_number_of_transitive_groups
+export number_of_weak_compositions
 export numerator
 export objective_function
 export omega_group
@@ -1092,6 +1095,7 @@ export on_indeterminates
 export on_lines
 export on_sets
 export on_sets_sets
+export on_simplicial_complex
 export on_subgroups
 export on_tuples
 export one!
@@ -1368,6 +1372,7 @@ export src
 export stable_intersection
 export stable_set_polytope
 export standard_basis
+export standard_basis_highest_corner
 export standard_basis_with_transformation_matrix
 export standard_tableaux
 export stanley_reisner_ideal
@@ -1480,6 +1485,8 @@ export volume_map
 export walls
 export wdeglex
 export wdegrevlex
+export weak_composition
+export weak_compositions
 export weakly_connected_components
 export wedge
 export wedge_generator_decompose_function
