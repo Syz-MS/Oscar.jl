@@ -14,7 +14,7 @@ Display the points of the "mother of all examples" non-regular triangulation.
 ```jldoctest
 julia> moaepts = [4 0 0; 0 4 0; 0 0 4; 2 1 1; 1 2 1; 1 1 2];
 
-julia> moaeimnonreg0 = IncidenceMatrix([[4,5,6],[1,4,2],[2,4,5],[2,3,5],[3,5,6],[1,3,6],[1,4,6]]);
+julia> moaeimnonreg0 = incidence_matrix([[4,5,6],[1,4,2],[2,4,5],[2,3,5],[3,5,6],[1,3,6],[1,4,6]]);
 
 julia> MOAE = subdivision_of_points(moaepts, moaeimnonreg0);
 
@@ -47,6 +47,9 @@ _matrix_for_polymake(::Val{_point}) = _point_matrix
 
 Return an iterator over the maximal cells of `SOP`.
 
+Optionally `IncidenceMatrix` can be passed as a first argument to return the
+incidence matrix specifying the maximal cells of `SOP`.
+
 # Examples
 Display the cells of the "mother of all examples" non-regular triangulation.
 ```jldoctest
@@ -59,7 +62,7 @@ julia> moaepts = [4 0 0; 0 4 0; 0 0 4; 2 1 1; 1 2 1; 1 1 2]
  1  2  1
  1  1  2
 
-julia> moaeimnonreg0 = IncidenceMatrix([[4,5,6],[1,4,2],[2,4,5],[2,3,5],[3,5,6],[1,3,6],[1,4,6]])
+julia> moaeimnonreg0 = incidence_matrix([[4,5,6],[1,4,2],[2,4,5],[2,3,5],[3,5,6],[1,3,6],[1,4,6]])
 7×6 IncidenceMatrix
 [4, 5, 6]
 [1, 2, 4]
@@ -81,6 +84,16 @@ julia> maximal_cells(MOAE)
  [3, 5, 6]
  [1, 3, 6]
  [1, 4, 6]
+
+julia> maximal_cells(IncidenceMatrix, MOAE)
+7×6 IncidenceMatrix
+[4, 5, 6]
+[1, 2, 4]
+[2, 4, 5]
+[2, 3, 5]
+[3, 5, 6]
+[1, 3, 6]
+[1, 4, 6]
 ```
 """
 maximal_cells(SOP::SubdivisionOfPoints) = maximal_cells(Vector{Int}, SOP)
@@ -232,7 +245,7 @@ triangulation of six points.
 ```jldoctest
 julia> moaepts = [4 0 0; 0 4 0; 0 0 4; 2 1 1; 1 2 1; 1 1 2];
 
-julia> moaeimnonreg0 = IncidenceMatrix([[4,5,6],[1,4,2],[2,4,5],[2,3,5],[3,5,6],[1,3,6],[1,4,6]]);
+julia> moaeimnonreg0 = incidence_matrix([[4,5,6],[1,4,2],[2,4,5],[2,3,5],[3,5,6],[1,3,6],[1,4,6]]);
 
 julia> MOAE = subdivision_of_points(moaepts, moaeimnonreg0);
 

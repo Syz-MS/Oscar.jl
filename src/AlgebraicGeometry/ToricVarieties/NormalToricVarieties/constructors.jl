@@ -82,7 +82,7 @@ julia> ray_generators = [[1,0], [0, 1], [-1, 5], [0, -1]]
  [-1, 5]
  [0, -1]
 
-julia> max_cones = IncidenceMatrix([[1, 2], [2, 3], [3, 4], [4, 1]])
+julia> max_cones = incidence_matrix([[1, 2], [2, 3], [3, 4], [4, 1]])
 4×4 IncidenceMatrix
 [1, 2]
 [2, 3]
@@ -174,6 +174,17 @@ Normal toric variety
 function affine_normal_toric_variety(v::NormalToricVariety)
   is_affine(v) || error("Cannot construct affine toric variety from non-affine input")
   return AffineNormalToricVariety(pm_object(v))
+end
+
+
+
+######################
+# Equality
+######################
+
+function Base.:(==)(tv1::NormalToricVariety, tv2::NormalToricVariety)
+  tv1 === tv2 && return true
+  error("Equality of normal toric varieties is computationally very demanding. More details in the documentation.")
 end
 
 

@@ -40,7 +40,7 @@ points and the rows represent the polyhedra.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]])
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]])
 2×4 IncidenceMatrix
 [1, 2, 3]
 [1, 3, 4]
@@ -61,7 +61,7 @@ Polyhedral complex with rays and lineality:
 ```jldoctest
 julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
 
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -169,6 +169,49 @@ function polyhedral_complex(iter::SubObjectIterator{Polyhedron{T}}) where {T<:sc
 end
 
 polyhedral_complex(P::Polyhedron{T}) where {T<:scalar_types} = polyhedral_complex([P])
+
+@doc raw"""
+    polyhedral_complex(F::PolyhedralFan)
+
+Turn a polyhedral fan into a polyhedral complex.
+"""
+function polyhedral_complex(F::PolyhedralFan{T}) where {T<:scalar_types}
+  pmo_in = pm_object(F)
+  pmo_out = Polymake.fan.PolyhedralComplex{_scalar_type_to_polymake(T)}()
+  for prop in ("RAYS", "INPUT_RAYS", "FACET_NORMALS")
+    if Polymake.exists(pmo_in, prop)
+      Polymake.take(pmo_out, prop, embed_at_height_one(Polymake.give(pmo_in, prop), true))
+    end
+  end
+  for prop in ("INPUT_LINEALITY", "LINEALITY_SPACE", "LINEAR_SPAN_NORMALS")
+    if Polymake.exists(pmo_in, prop)
+      Polymake.take(pmo_out, prop, embed_at_height_one(Polymake.give(pmo_in, prop), false))
+    end
+  end
+  for prop in ("MAXIMAL_CONES", "INPUT_CONES", "MAXIMAL_CONES_FACETS")
+    if Polymake.exists(pmo_in, prop)
+      inprop = Polymake.give(pmo_in, prop)
+      outprop = if inprop isa Polymake.IncidenceMatrix
+        Polymake.IncidenceMatrix(nrows(inprop), ncols(inprop) + 1)
+      else
+        Polymake.SparseMatrix(nrows(inprop), ncols(inprop) + 1)
+      end
+      outprop[1:end, 2:end] = inprop
+      for i in 1:nrows(inprop)
+        outprop[i, 1] = 1
+      end
+      Polymake.take(pmo_out, prop, outprop)
+    end
+  end
+  if Polymake.exists(pmo_in, "MAXIMAL_CONES_LINEAR_SPAN_NORMALS")
+    Polymake.take(
+      pmo_out,
+      "MAXIMAL_CONES_LINEAR_SPAN_NORMALS",
+      Polymake.give(pmo_in, "MAXIMAL_CONES_LINEAR_SPAN_NORMALS"),
+    )
+  end
+  return PolyhedralComplex{T}(pmo_out, coefficient_field(F))
+end
 
 ###############################################################################
 ###############################################################################

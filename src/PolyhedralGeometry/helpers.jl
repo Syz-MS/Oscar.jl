@@ -1,14 +1,14 @@
 import Polymake: IncidenceMatrix
 
 @doc raw"""
-     IncidenceMatrix
+    IncidenceMatrix
 
 A matrix with boolean entries. Each row corresponds to a fixed element of a collection of mathematical objects and the same holds for the columns and a second (possibly equal) collection. A `1` at entry `(i, j)` is interpreted as an incidence between object `i` of the first collection and object `j` of the second one.
 
 # Examples
-Note that the input and print of an `IncidenceMatrix` lists the non-zero indices for each row.
+Note that the input of this example and the print of an `IncidenceMatrix` list the non-zero indices for each row.
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[4,5,6]])
+julia> IM = incidence_matrix([[1,2,3],[4,5,6]])
 2×6 IncidenceMatrix
 [1, 2, 3]
 [4, 5, 6]
@@ -27,6 +27,109 @@ julia> IM[:, 4]
 """
 IncidenceMatrix
 
+@doc raw"""
+    incidence_matrix(r::Base.Integer, c::Base.Integer)
+
+Return an `IncidenceMatrix` of size r x c whose entries are all `false`.
+
+# Examples
+```jldoctest
+julia> IM = incidence_matrix(8, 5)
+8×5 IncidenceMatrix
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+
+```
+"""
+incidence_matrix(r::Base.Integer, c::Base.Integer) = IncidenceMatrix(undef, r, c)
+
+@doc raw"""
+    incidence_matrix(mat::Union{AbstractMatrix{Bool}, IncidenceMatrix})
+
+Convert `mat` to an `IncidenceMatrix`.
+
+# Examples
+```jldoctest
+julia> IM = incidence_matrix([true false true false true false; false true false true false true])
+2×6 IncidenceMatrix
+[1, 3, 5]
+[2, 4, 6]
+
+```
+"""
+incidence_matrix(mat::Union{AbstractMatrix{Bool},IncidenceMatrix}) = IncidenceMatrix(mat)
+
+@doc raw"""
+    incidence_matrix(mat::AbstractMatrix)
+
+Convert the `0`/`1` matrix `mat` to an `IncidenceMatrix`. Entries become `true` if the initial entry is `1` and `false` if the initial entry is `0`.
+
+# Examples
+```jldoctest
+julia> IM = incidence_matrix([1 0 1 0 1 0; 0 1 0 1 0 1])
+2×6 IncidenceMatrix
+[1, 3, 5]
+[2, 4, 6]
+
+```
+"""
+function incidence_matrix(mat::AbstractMatrix)
+  m, n = size(mat)
+  for i in 1:m
+    for j in 1:n
+      iszero(mat[i, j]) || isone(mat[i, j]) ||
+        throw(
+          ArgumentError("incidence_matrix requires matrices with 0/1 or boolean entries.")
+        )
+    end
+  end
+  return IncidenceMatrix(mat)
+end
+
+@doc raw"""
+    incidence_matrix(r::Base.Integer, c::Base.Integer, incidenceRows::AbstractVector{<:AbstractVector{<:Base.Integer}})
+
+Return an `IncidenceMatrix` of size r x c. The i-th element of `incidenceRows` lists the indices of the `true` entries of the i-th row.
+
+# Examples
+```jldoctest
+julia> IM = incidence_matrix(3, 4, [[2, 3], [1]])
+3×4 IncidenceMatrix
+[2, 3]
+[1]
+[]
+
+```
+"""
+incidence_matrix(
+  r::Base.Integer,
+  c::Base.Integer,
+  incidenceRows::AbstractVector{<:AbstractVector{<:Base.Integer}},
+) = IncidenceMatrix(r, c, incidenceRows)
+
+@doc raw"""
+    incidence_matrix(incidenceRows::AbstractVector{<:AbstractVector{<:Base.Integer}})
+
+Return an `IncidenceMatrix` where the i-th element of `incidenceRows` lists the indices of the `true` entries of the i-th row. The dimensions of the result are the smallest possible row and column count that can be deduced from the input.
+
+# Examples
+```jldoctest
+julia> IM = incidence_matrix([[2, 3], [1]])
+2×3 IncidenceMatrix
+[2, 3]
+[1]
+
+```
+"""
+incidence_matrix(incidenceRows::AbstractVector{<:AbstractVector{<:Base.Integer}}) =
+  IncidenceMatrix(incidenceRows)
+
 number_of_rows(i::IncidenceMatrix) = Polymake.nrows(i)
 number_of_columns(i::IncidenceMatrix) = Polymake.ncols(i)
 
@@ -34,13 +137,13 @@ number_of_rows(A::Polymake.Matrix) = Polymake.nrows(A)
 number_of_columns(A::Polymake.Matrix) = Polymake.ncols(A)
 
 @doc raw"""
-     row(i::IncidenceMatrix, n::Int)
+    row(i::IncidenceMatrix, n::Int)
 
 Return the indices where the `n`-th row of `i` is `true`, as a `Set{Int}`.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[4,5,6]])
+julia> IM = incidence_matrix([[1,2,3],[4,5,6]])
 2×6 IncidenceMatrix
 [1, 2, 3]
 [4, 5, 6]
@@ -56,13 +159,13 @@ Set{Int64} with 3 elements:
 row(i::IncidenceMatrix, n::Int) = convert(Set{Int}, Polymake.row(i, n))
 
 @doc raw"""
-     column(i::IncidenceMatrix, n::Int)
+    column(i::IncidenceMatrix, n::Int)
 
 Return the indices where the `n`-th column of `i` is `true`, as a `Set{Int}`.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[4,5,6]])
+julia> IM = incidence_matrix([[1,2,3],[4,5,6]])
 2×6 IncidenceMatrix
 [1, 2, 3]
 [4, 5, 6]
@@ -216,6 +319,10 @@ end
 (F::Field)(x::Polymake.Rational) = F(QQ(x))
 (F::Field)(x::Polymake.OscarNumber) = F(Polymake.unwrap(x))
 
+# Disambiguation
+(F::QQBarField)(x::Polymake.Rational) = F(QQ(x))
+(F::QQBarField)(x::Polymake.OscarNumber) = F(Polymake.unwrap(x))
+
 Polymake.convert_to_pm_type(::Type{typeof(min)}) = Polymake.Min
 Polymake.convert_to_pm_type(::Type{typeof(max)}) = Polymake.Max
 
@@ -234,7 +341,7 @@ Base.convert(
 ) where {T<:Union{Directed,Undirected}} = Oscar.pm_object(g)
 
 function remove_zero_rows(A::AbstractMatrix)
-  A[findall(x -> !iszero(x), collect(eachrow(A))), :]
+  A[findall(!iszero, collect(eachrow(A))), :]
 end
 function remove_zero_rows(A::AbstractMatrix{Float64})
   A[
@@ -290,8 +397,7 @@ homogenized_matrix(x::AbstractVector, val::Number) = permutedims(homogenize(x, v
 homogenized_matrix(x::AbstractVector{<:AbstractVector}, val::Number) =
   stack((homogenize(x[i], val) for i in 1:length(x))...)
 
-dehomogenize(vec::AbstractVector) = vec[2:end]
-dehomogenize(mat::AbstractMatrix) = mat[:, 2:end]
+dehomogenize(vm::AbstractVecOrMat) = Polymake.call_function(:polytope, :dehomogenize, vm)
 
 unhomogenized_matrix(x::AbstractVector) = assure_matrix_polymake(stack(x))
 unhomogenized_matrix(x::AbstractMatrix) = assure_matrix_polymake(x)
@@ -505,6 +611,10 @@ function _parent_or_coefficient_field(::Type{T}, x, y...) where {T<:scalar_types
   missing
 end
 
+function _parent_or_coefficient_field(::Type{T}, c::Tuple) where {T<:FieldElem}
+  return _parent_or_coefficient_field(T, c...)
+end
+
 function _determine_parent_and_scalar(f::Union{Field,ZZRing}, x...)
   _check_field_polyhedral(elem_type(f))
   return (f, elem_type(f))
@@ -672,6 +782,14 @@ end
 
 # oscarnumber helpers
 
+function Polymake._fieldelem_to_floor(e::Union{EmbeddedNumFieldElem,QQBarFieldElem})
+  return BigInt(floor(ZZRingElem, e))
+end
+
+function Polymake._fieldelem_to_ceil(e::Union{EmbeddedNumFieldElem,QQBarFieldElem})
+  return BigInt(ceil(ZZRingElem, e))
+end
+
 function Polymake._fieldelem_to_rational(e::EmbeddedNumFieldElem)
   return Rational{BigInt}(QQ(e))
 end
@@ -717,4 +835,17 @@ function _property_qe_to_on(x, f::Field)
   else
     return x
   end
+end
+
+# Helper function for conversion
+# Cone -> Polyhedron
+# PolyhedralFan -> PolyhedralComplex
+# for transforming coordinate matrices.
+function embed_at_height_one(M::Polymake.Matrix{T}, add_vert::Bool) where {T}
+  result = Polymake.Matrix{T}(add_vert + nrows(M), ncols(M) + 1)
+  if add_vert
+    result[1, 1] = 1
+  end
+  result[(add_vert + 1):end, 2:end] = M
+  return result
 end

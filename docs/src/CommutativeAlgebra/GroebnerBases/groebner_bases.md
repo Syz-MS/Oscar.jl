@@ -1,8 +1,6 @@
 ```@meta
 CurrentModule = Oscar
-DocTestSetup = quote
-  using Oscar
-end
+DocTestSetup = Oscar.doctestsetup()
 ```
 
 # [Gröbner/Standard Bases Over Fields](@id gb_fields)
@@ -53,19 +51,23 @@ The *leading monomial* $\text{LM}_>(f)$, the *leading exponent* $\text{LE}_>(f)$
     positive weights. Then the corresponding `wdegrevlex` ordering is used. Given a free $R$-module $F$, the
     `default_ordering` is `default_ordering(R)*lex(gens(F))`.
 
+```@docs
+default_ordering(::MPolyRing)
+```
+
 Here are some illustrating OSCAR examples:
 
 ##### Examples
 
 ```jldoctest
-julia> R, (x, y, z) = polynomial_ring(QQ, ["x", "y", "z"])
+julia> R, (x, y, z) = polynomial_ring(QQ, [:x, :y, :z])
 (Multivariate polynomial ring in 3 variables over QQ, QQMPolyRingElem[x, y, z])
 
 julia> default_ordering(R)
 degrevlex([x, y, z])
 
 julia> F = free_module(R, 2)
-Free module of rank 2 over Multivariate polynomial ring in 3 variables over QQ
+Free module of rank 2 over R
 
 julia> default_ordering(F)
 degrevlex([x, y, z])*lex([gen(1), gen(2)])
@@ -77,13 +79,18 @@ julia> default_ordering(S)
 wdegrevlex([x, y, z], [1, 2, 3])
 ```
 
+Expert users may temporarily choose a different default ordering for a given ring.
+```@docs
+with_ordering
+```
+
 ## [Monomials, Terms, and More](@id monomials_terms_more)
 
 Here are examples which indicate how to recover monomials, terms, and
 more from a given polynomial.
 
 ```jldoctest
-julia> R, (x, y, z) = polynomial_ring(QQ, ["x", "y", "z"])
+julia> R, (x, y, z) = polynomial_ring(QQ, [:x, :y, :z])
 (Multivariate polynomial ring in 3 variables over QQ, QQMPolyRingElem[x, y, z])
 
 julia> f = 3*z^3+2*x*y+1
@@ -136,11 +143,11 @@ julia> tail(f)
 ```
 
 ```jldoctest
-julia> R, (x, y) = polynomial_ring(QQ, ["x", "y"])
+julia> R, (x, y) = polynomial_ring(QQ, [:x, :y])
 (Multivariate polynomial ring in 2 variables over QQ, QQMPolyRingElem[x, y])
 
 julia> F = free_module(R, 3)
-Free module of rank 3 over Multivariate polynomial ring in 2 variables over QQ
+Free module of rank 3 over R
 
 julia> f = (5*x*y^2-y^10+3)*F[1]+(4*x^3+2*y) *F[2]+16*x*F[3]
 (5*x*y^2 - y^10 + 3)*e[1] + (4*x^3 + 2*y)*e[2] + 16*x*e[3]
@@ -234,7 +241,7 @@ reduce(g::T, F::Vector{T};
 reduce_with_quotients(g::T, F::Vector{T}; 
     ordering::MonomialOrdering = default_ordering(parent(F[1]))) where T <: MPolyRingElem
 ```
-      
+
 ```@docs
 reduce_with_quotients_and_unit(g::T, F::Vector{T}; 
     ordering::MonomialOrdering = default_ordering(parent(F[1]))) where T <: MPolyRingElem

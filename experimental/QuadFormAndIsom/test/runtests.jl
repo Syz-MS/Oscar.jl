@@ -104,7 +104,17 @@ end
       @test Lf == loaded
     end
   end
-  
+
+  L = integer_lattice(; gram = QQ[1 2; 2 1])
+  h = QQ[4 -1; 1 0]
+  Lf = integer_lattice_with_isometry(L, h)
+
+  mktempdir() do path
+    test_save_load_roundtrip(path, Lf) do loaded
+      @test Lf == loaded
+    end
+  end
+
   L = @inferred integer_lattice_with_isometry(A3)
   @test is_primary(L, 2)
   @test !is_elementary(L, 2)
@@ -242,7 +252,7 @@ end
   cc = conjugacy_classes(OA4)
 
   D = Oscar._test_isometry_enumeration(A4, 6)
-  for n in collect(keys(D))
+  for n in keys(D)
     @test length(D[n]) == length(filter(c -> order(representative(c)) == n, cc))
   end
   
@@ -268,11 +278,17 @@ end
 @testset "Enumeration of lattices with isometry of hermitian type" begin
   # Infinite isometry: chi is a Salem polynomial
   G = genus(torsion_quadratic_module(QQ[0;]), (9, 1))
-  _, x = QQ["x"]
+  _, x = QQ[:x]
   chi = x^(10)+x^9-x^7-x^6-x^5-x^4-x^3+x+1
   rht = @inferred representatives_of_hermitian_type(G, chi)
   @test !isempty(rht)
   @test all(N -> !is_finite(order_of_isometry(N)), rht)
+
+  # Galois orbits
+  U = hyperbolic_plane_lattice()
+  L = direct_sum(U, U, U, U)[1]
+  @test length(representatives_of_hermitian_type(L, 5, false)) == 3
+  @test length(representatives_of_hermitian_type(L, 5, true)) == 2
 end
 
 @testset "Primitive extensions and embeddings" begin
@@ -285,7 +301,7 @@ end
   ok, sv = primitive_embeddings(rescale(E8, 2), rescale(k, QQ(1//2)); check=false)
   @test !ok
   @test is_empty(sv)
-  @test_throws ArgumentError primitive_embeddings(rescale(E8, -1), k; check=false)
+  @test isempty(primitive_embeddings(rescale(E8, -1), k; check=false)[2])
 
   k = integer_lattice(; gram=matrix(QQ,1,1,[6]))
   E7 = root_lattice(:E, 7)

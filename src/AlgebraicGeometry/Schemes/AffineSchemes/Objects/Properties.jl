@@ -527,7 +527,7 @@ end
 # TODO: projective schemes, covered schemes
 
 @doc raw"""
-   is_equidimensional(X::AbsAffineScheme{<:Field, <:MPolyAnyRing})
+    is_equidimensional(X::AbsAffineScheme{<:Field, <:MPolyAnyRing})
 
 Check whether the scheme `X` is equidimensional.
 
@@ -537,7 +537,7 @@ This command relies on [`equidimensional_decomposition_radical`](@ref).
 
 # Examples
 ```jldoctest
-julia> R, (x, y) = polynomial_ring(QQ, ["x", "y"])
+julia> R, (x, y) = polynomial_ring(QQ, [:x, :y])
 (Multivariate polynomial ring in 2 variables over QQ, QQMPolyRingElem[x, y])
 
 julia> I = ideal(R,[(x-y)])
@@ -593,7 +593,7 @@ end
 # TODO: projective schemes
 
 @doc raw"""
-   is_reduced(X::AbsAffineScheme{<:Field, <:MPolyAnyRing})
+    is_reduced(X::AbsAffineScheme{<:Field, <:MPolyAnyRing})
 
 Check whether the affine scheme `X` is reduced.
 """
@@ -644,7 +644,7 @@ is locally free over 𝒪(X).
 
 # Examples
 ```jldoctest
-julia> R, (x, y) = polynomial_ring(QQ, ["x", "y"])
+julia> R, (x, y) = polynomial_ring(QQ, [:x, :y])
 (Multivariate polynomial ring in 2 variables over QQ, QQMPolyRingElem[x, y])
 
 julia> I = ideal(R,[x-y^2])
@@ -699,8 +699,9 @@ true
   L = localized_ring(OO(X))
   I = modulus(OO(X))
   f = gens(saturated_ideal(I))
+  is_empty(f) && return true
   Df = jacobian_matrix(f)
-  A = map_entries(x->OO(X)(x), Df)
+  A = map_entries(OO(X), Df)
   success, _, _ = Oscar._is_projective_without_denominators(A, task=:without_projector)
   return success
 end
@@ -710,7 +711,7 @@ end
   I = modulus(OO(X))
   f = gens(I)
   Df = jacobian_matrix(f)
-  A = map_entries(x->OO(X)(x), Df)
+  A = map_entries(OO(X), Df)
   success, _, _ = Oscar._is_projective_without_denominators(A, task=:without_projector)
   return success
 end
@@ -726,7 +727,7 @@ is_smooth(X::AbsAffineScheme{<:Field, <:MPolyLocRing}) = true
 #    irreducible = nilradical of OO(X) is prime                   #
 ###################################################################
 @doc raw"""
-   is_irreducible(X::AbsAffineScheme)
+    is_irreducible(X::AbsAffineScheme)
 
 Check whether the affine scheme `X` is irreducible.
 
@@ -746,7 +747,7 @@ is_irreducible(X::AbsAffineScheme{<:Field,<:MPolyRing}) = true
 is_irreducible(X::AbsAffineScheme{<:Field,<:MPolyLocRing}) = true
 
 @doc raw"""
-   is_integral(X::AbsAffineScheme)
+    is_integral(X::AbsAffineScheme)
 
 Check whether the affine scheme `X` is integral, i.e. irreducible and reduced.
 """
@@ -782,7 +783,7 @@ end
 # Connectedness                                                   #
 ###################################################################
 @doc raw"""
-   is_connected(X::AbsAffineScheme)
+    is_connected(X::AbsAffineScheme)
 
 Check whether the affine scheme `X` is connected.
 """

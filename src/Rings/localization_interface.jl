@@ -35,7 +35,7 @@ Return `true` if `f` belongs to `U`, `false` otherwise.
 
 # Examples
 ```jldoctest
-julia> R, (x, y, z) = polynomial_ring(QQ, ["x", "y", "z"])
+julia> R, (x, y, z) = polynomial_ring(QQ, [:x, :y, :z])
 (Multivariate polynomial ring in 3 variables over QQ, QQMPolyRingElem[x, y, z])
 
 julia> P = ideal(R, [x])
@@ -93,7 +93,7 @@ If, say, Rloc = R[U⁻¹], return R.
 
 # Examples
 ```jldoctest
-julia> R, (x, y, z) = polynomial_ring(QQ, ["x", "y", "z"])
+julia> R, (x, y, z) = polynomial_ring(QQ, [:x, :y, :z])
 (Multivariate polynomial ring in 3 variables over QQ, QQMPolyRingElem[x, y, z])
 
 julia> P = ideal(R, [x])
@@ -123,7 +123,7 @@ If, say, Rloc = R[U⁻¹], return U.
 
 # Examples
 ```jldoctest
-julia> R, (x, y, z) = polynomial_ring(QQ, ["x", "y", "z"])
+julia> R, (x, y, z) = polynomial_ring(QQ, [:x, :y, :z])
 (Multivariate polynomial ring in 3 variables over QQ, QQMPolyRingElem[x, y, z])
 
 julia> P = ideal(R, [x])
@@ -159,7 +159,7 @@ Given a multiplicatively closed subset ``U`` of ``R``, proceed as above.
 
 # Examples
 ```jldoctest
-julia> R, (x, y, z) = polynomial_ring(QQ, ["x", "y", "z"])
+julia> R, (x, y, z) = polynomial_ring(QQ, [:x, :y, :z])
 (Multivariate polynomial ring in 3 variables over QQ, QQMPolyRingElem[x, y, z])
 
 julia> P = ideal(R, [x])
@@ -414,33 +414,13 @@ end
 
 function Base.show(io::IO, W::AbsLocalizedRing)
   io = pretty(io)
-  if get(io, :supercompact, false)
+  if is_terse(io)
     print(io, "Localized ring")
   else
     print(io, "Localization of ", Lowercase(), base_ring(W))
     print(io, " at ")
     print(io, Lowercase(), inverted_set(W))
   end
-end
-
-function zero!(a::AbsLocalizedRingElem)
-  a = zero(parent(a))
-  return a
-end
-
-function mul!(c::T, a::T, b::T) where {T<:AbsLocalizedRingElem}
-  c = a*b
-  return c
-end
-
-function add!(c::T, a::T, b::T) where {T<:AbsLocalizedRingElem}
-  c = a+b
-  return c
-end
-
-function addeq!(a::T, b::T) where {T<:AbsLocalizedRingElem}
-  a = a+b
-  return a
 end
 
 ### promotion rules
@@ -660,5 +640,23 @@ end
 function preimage(f::AbsLocalizedRingHom, I::Ideal)
   base_ring(I) === codomain(f) || error("ideal must be in the codomain of f")
   Q, proj = quo(codomain(f), I)
-  return kernel(compose(f, proj))
+  result = kernel(compose(f, proj))
+  if has_attribute(I, :is_prime) && get_attribute(I, :is_prime) === true
+    set_attribute!(result, :is_prime=> true)
+  end
+  return result
 end
+
+# For the generic code we route everything through the kernel computation.
+# This is different to what happens within the affine algebras where the 
+# computation of kernels is rerouted to a preimage, but that shouldn't matter.
+function preimage(f::MPolyAnyMap{<:Union{<:MPolyRing, <:MPolyQuoRing}, <:AbsLocalizedRing}, I::Ideal)
+  base_ring(I) === codomain(f) || error("ideal must be in the codomain of f")
+  Q, proj = quo(codomain(f), I)
+  result = kernel(compose(f, proj))
+  if has_attribute(I, :is_prime) && get_attribute(I, :is_prime) === true
+    set_attribute!(I, :is_prime=> true)
+  end
+  return result
+end
+

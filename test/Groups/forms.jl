@@ -1,5 +1,5 @@
 @testset "Definition forms" begin
-   T,t = polynomial_ring(GF(3),"t")
+   T,t = polynomial_ring(GF(3),:t)
    F,z = finite_field(t^2+1,"z")
 
    B = matrix(F,4,4,[0 1 0 0; 2 0 0 0; 0 0 0 z+2; 0 0 1-z 0])
@@ -24,7 +24,7 @@
    @test f isa SesquilinearForm
    @test gram_matrix(f)==B
    @test is_hermitian(f)
-   @test f.X isa GAP.GapObj
+   @test GAP.Obj(f) isa GapObj
    @test_throws AssertionError f = symmetric_form(B)
    @test_throws AssertionError f = alternating_form(B)
    @test_throws ArgumentError corresponding_quadratic_form(f)
@@ -58,7 +58,7 @@
    @test_throws ArgumentError corresponding_quadratic_form(Q)
    @test_throws ArgumentError corresponding_bilinear_form(f)
 
-   R,x = polynomial_ring(F,"x")
+   R,x = polynomial_ring(F,:x)
    p = x^2*z
    Q = quadratic_form(p)
    @test is_quadratic(Q)
@@ -66,7 +66,7 @@
    @test is_symmetric(f)
    @test gram_matrix(f)==matrix(F,1,1,[-z])
 
-   T,t = polynomial_ring(GF(2),"t")
+   T,t = polynomial_ring(GF(2),:t)
    F,z = finite_field(t^2+t+1,"z")
    R = polynomial_ring(F,4)[1]
    p = R[1]*R[2]+z*R[3]*R[4]
@@ -176,7 +176,7 @@ end
    @test !is_true
    @test z===nothing
 
-   T,t = polynomial_ring(GF(3),"t")
+   T,t = polynomial_ring(GF(3),:t)
    F,a = finite_field(t^2+1,"a")
    x = zero_matrix(F,6,6)
    x[1,2]=1+2*a; x[3,4]=a; x[5,6]=1; x=x+transpose(x)
@@ -388,14 +388,14 @@ end
    L = invariant_sesquilinear_forms(G)
    @testset for f in L
        for g in gens(G)
-          @test g.elm*f*conjugate_transpose(g.elm)==f
+          @test matrix(g)*f*conjugate_transpose(matrix(g))==f
        end
    end
    G = GO(-1,4,3)
    L = invariant_bilinear_forms(G)
    @testset for f in L
        for g in gens(G)
-          @test g.elm*f*transpose(g.elm)==f
+          @test matrix(g)*f*transpose(matrix(g))==f
        end
    end
    L = invariant_quadratic_forms(G)
@@ -450,7 +450,7 @@ end
    end
    B = Oscar.invariant_bilinear_form(G)
    @testset for g in gens(G)
-      @test g.elm*B*transpose(g.elm)==B
+      @test matrix(g)*B*transpose(matrix(g))==B
    end
    L = preserved_sesquilinear_forms(G)
    @testset for f in L
@@ -469,11 +469,11 @@ end
    end
    B = Oscar.invariant_bilinear_form(G)
    @testset for g in gens(G)
-      @test g.elm*B*transpose(g.elm)==B
+      @test matrix(g)*B*transpose(matrix(g))==B
    end
    B = Oscar.invariant_quadratic_form(G)
    @testset for g in gens(G)
-      @test is_alternating(g.elm*B*transpose(g.elm)-B)
+      @test is_alternating(matrix(g)*B*transpose(matrix(g))-B)
    end
 
    G = GU(4,5)
@@ -485,7 +485,7 @@ end
    end
    B = Oscar.invariant_sesquilinear_form(G)
    @testset for g in gens(G)
-      @test g.elm*B*conjugate_transpose(g.elm)==B
+      @test matrix(g)*B*conjugate_transpose(matrix(g))==B
    end
 
    G = general_linear_group(2, 3)

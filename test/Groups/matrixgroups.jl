@@ -2,8 +2,8 @@
    F = GF(29, 1)
    z = F(2)
    G = GL(3,F)
-   @test G.X isa GAP.GapObj
-   @test isdefined(G,:X)
+   #@test isdefined(G,:X)
+   @test GapObj(G) isa GapObj
    @test isdefined(G, :ring_iso)
    @test G.ring_iso(z) isa GAP.FFE
    Z = G.ring_iso(z)
@@ -18,23 +18,23 @@
    @test isone(preimage(G.ring_iso, GAP.Globals.One(codomain(G.ring_iso))))
    
    xo = matrix(F,3,3,[1,z,0,0,1,2*z+1,0,0,z+2])
-#   xg = Vector{GAP.GapObj}(undef, 3)
+#   xg = Vector{GapObj}(undef, 3)
 #   for i in 1:3
-#      xg[i] = GAP.GapObj([preimage(G.ring_iso, xo[i,j]) for j in 1:3])
+#      xg[i] = GapObj([preimage(G.ring_iso, xo[i,j]) for j in 1:3])
 #   end
 #   xg=GAP.Obj(xg)
 
-   xg = GAP.GapObj([[G.ring_iso(xo[i,j]) for j in 1:3] for i in 1:3]; recursive=true)
+   xg = GapObj([[G.ring_iso(xo[i,j]) for j in 1:3] for i in 1:3]; recursive = true)
    @test map_entries(G.ring_iso, xo) == xg
    @test Oscar.preimage_matrix(G.ring_iso, xg) == xo
    @test Oscar.preimage_matrix(G.ring_iso, GAP.Globals.One(GAP.Globals.GL(3, codomain(G.ring_iso)))) == matrix(one(G))
    @test GAP.Globals.Order(map_entries(G.ring_iso, diagonal_matrix([z,z,one(F)]))) == 28
 
-   T,t = polynomial_ring(GF(3) ,"t")
+   T,t = polynomial_ring(GF(3) ,:t)
    F,z = finite_field(t^2+1,"z")
    G = GL(3,F)
-   @test G.X isa GAP.GapObj
-   @test isdefined(G,:X)
+   #@test isdefined(G,:X)
+   @test GapObj(G) isa GapObj
    @test isdefined(G, :ring_iso)
    @test G.ring_iso(z) isa GAP.FFE
    Z = G.ring_iso(z)
@@ -54,7 +54,7 @@
    @test isone(preimage(G.ring_iso, GAP.Globals.One(codomain(G.ring_iso))))
    
    xo = matrix(F,3,3,[1,z,0,0,1,2*z+1,0,0,z+2])
-   xg = Vector{GAP.GapObj}(undef, 3)
+   xg = Vector{GapObj}(undef, 3)
    for i in 1:3
       xg[i] = GAP.Obj([G.ring_iso(xo[i,j]) for j in 1:3])
    end
@@ -79,10 +79,10 @@ end
          @test g(a * b) == g(a) * g(b)
          @test g(a - b) == g(a) - g(b)
       end
-      @test G.ring_iso(z) isa GAP.Obj
-      @test G.X isa GAP.GapObj
-      @test isdefined(G, :X)
+      #@test isdefined(G, :X)
+      @test GapObj(G) isa GapObj
       @test isdefined(G, :ring_iso)
+      @test G.ring_iso(z) isa GAP.Obj
       Z = G.ring_iso(z)
       @test Z in codomain(G.ring_iso)
       @test preimage(G.ring_iso, Z) == z
@@ -93,7 +93,7 @@ end
       @test isone(preimage(G.ring_iso, GAP.Globals.One(codomain(G.ring_iso))))
 
       xo = matrix(F, 3, 3, [0, 1, 0, 0, 1, z, 0, 0, z])
-      xg = GAP.GapObj([[G.ring_iso(xo[i, j]) for j in 1:3] for i in 1:3]; recursive = true)
+      xg = GapObj([[G.ring_iso(xo[i, j]) for j in 1:3] for i in 1:3]; recursive = true)
       @test map_entries(G.ring_iso, xo) == xg
       @test Oscar.preimage_matrix(G.ring_iso, xg) == xo
       @test Oscar.preimage_matrix(G.ring_iso, GAP.Globals.IdentityMat(3)) == matrix(one(G))
@@ -133,8 +133,8 @@ end
        @test g(g\x) == x
      end
 
-     H = GAP.Globals.Group(GAP.Obj(gens(G0); recursive=true))
-     f = GAP.Globals.GroupHomomorphismByImages(G.X, H)
+     H = GAP.Globals.Group(GAP.Obj(gens(G0); recursive = true))
+     f = GAP.Globals.GroupHomomorphismByImages(GapObj(G), H)
      @test GAP.Globals.IsBijective(f)
      @test order(G) == GAP.Globals.Order(H)
    end
@@ -153,6 +153,22 @@ end
    end
 end
 
+@testset "small_generating_set" begin
+   inputs = [
+     # finite group over an infinite base domain
+     (matrix(QQ, [0 1; 1 0]), matrix(QQ, [0 1; -1 -1])),
+ #   # infinite group
+ #   (matrix(QQ, [0 -1; 1 0]), matrix(QQ, [0 1; -1 -1])),
+#TODO: do not run into a GAP error message, see
+# https://github.com/gap-system/gap/issues/5790
+   ]
+
+   for (x, y) in inputs
+     G = matrix_group([x, y, x*y, y*x])
+     @test length(small_generating_set(G)) < length(gens(G))
+   end
+end
+
 @testset "matrix group over QQBar" begin
    K = algebraic_closure(QQ)
    e = one(K)
@@ -168,18 +184,63 @@ end
 
 end
 
+@testset "Classical groups over rings that are not supported by GAP" begin
+   G = GL(2, QQ)
+   @test_throws ErrorException G[1]
+   G = GL(2, ZZ)
+   @test nrows(G[1]) == 2
+   G = GL(2, residue_ring(ZZ, 6)[1])
+   @test nrows(G[1]) == 2
+
+   G = SL(2, QQ)
+   @test_throws ErrorException G[1]
+   G = SL(2, ZZ)
+   @test nrows(G[1]) == 2
+   G = SL(2, residue_ring(ZZ, 6)[1])
+   @test nrows(G[1]) == 2
+
+   G = Sp(2, QQ)
+   @test_throws ErrorException G[1]
+   G = Sp(2, ZZ)
+   @test_throws ErrorException G[1]
+   G = Sp(2, residue_ring(ZZ, 6)[1])
+   @test_throws ErrorException G[1]
+   G = Sp(2, residue_ring(ZZ, 4)[1])
+   @test nrows(G[1]) == 2
+   G = Sp(2, residue_ring(ZZ, 9)[1])
+   @test nrows(G[1]) == 2
+
+   G = GO(3, QQ)
+   @test_throws ErrorException G[1]
+   G = GO(3, ZZ)
+   @test_throws ErrorException G[1]
+   G = GO(3, residue_ring(ZZ, 6)[1])
+   @test_throws ErrorException G[1]
+   G = GO(3, residue_ring(ZZ, 9)[1])
+   @test nrows(G[1]) == 3
+
+   G = SO(3, QQ)
+   @test_throws ErrorException G[1]
+   G = SO(3, ZZ)
+   @test_throws ErrorException G[1]
+   G = SO(3, residue_ring(ZZ, 6)[1])
+   @test_throws ErrorException G[1]
+   G = SO(3, residue_ring(ZZ, 9)[1])
+   @test nrows(G[1]) == 3
+end
+
 @testset "Type operations" begin
    G = GL(5,5)
    x = rand(G)
    @test ring_elem_type(typeof(G))==typeof(one(base_ring(G)))
    @test mat_elem_type(typeof(G))==typeof(matrix(x))
    @test elem_type(typeof(G))==typeof(x)
-   @test Oscar._gap_filter(typeof(G))(G.X)
+   @test Oscar._gap_filter(typeof(G))(GapObj(G))
 end
 
 #FIXME : this may change in future. It can be easily skipped.
 @testset "Fields assignment" begin
-   T,t=polynomial_ring(GF(3),"t")
+   T,t=polynomial_ring(GF(3),:t)
    F,z=finite_field(t^2+1,"z")
 
    G = GL(2,F)
@@ -204,7 +265,7 @@ end
    x = matrix(F,2,2,[1,0,0,1])
    x = G(x)
    @test !isdefined(x,:X)
-   @test x.X isa GAP.GapObj
+   @test GapObj(x) isa GapObj
    x = matrix(G[1])
    x = G(x)
    @test !isdefined(x,:X)
@@ -227,8 +288,8 @@ end
    @test parent(f(H[1]))==G
 
    K1 = matrix_group(x,y,x*y)
-   @test K1.X isa GAP.GapObj
-   @test K1.X==H.X
+   @test GapObj(K1) isa GapObj
+   @test GapObj(K1)==GapObj(H)
 
    K = matrix_group(x,x^2,y)
    @test isdefined(K, :gens)
@@ -252,10 +313,10 @@ end
    @test order(x)==8
 
    G = matrix_group(F, 4)
-   @test_throws ErrorException G.X
+   @test_throws ErrorException GapObj(G)
    setfield!(G,:descr,:GX)
    @test isdefined(G,:descr)
-   @test_throws ErrorException G.X
+   @test_throws ErrorException GapObj(G)
 end
 
 
@@ -402,7 +463,7 @@ end
   end
 
   F = GF(2)
-  mp = MapFromFunc(ZZ, F, x -> F(x))
+  mp = MapFromFunc(ZZ, F, F)
   red = map_entries(mp, G)
   @test red == map_entries(F, G)
   red = map_entries(mp, T)
@@ -433,7 +494,7 @@ end
 end
 
 @testset "Membership" begin
-   T,t=polynomial_ring(GF(3),"t")
+   T,t=polynomial_ring(GF(3),:t)
    F,z=finite_field(t^2+1,"z")
 
    G = GL(2,F)
@@ -449,7 +510,7 @@ end
    @test S(x; check=false)==G(x)
    @test S(G(x); check=false)==G(x)
    x = G(x)
-   y = MatrixGroupElem(G,x.X)
+   y = MatrixGroupElem(G,GapObj(x))
    @test_throws ArgumentError S(y)
    @test G(y) isa MatrixGroupElem
    @test G(y*y)==G(y)*G(y)
@@ -484,7 +545,7 @@ end
 end
 
 @testset "Methods on elements" begin
-   T,t=polynomial_ring(GF(3),"t")
+   T,t=polynomial_ring(GF(3),:t)
    F,z=finite_field(t^2+1,"z")
 
    G = GL(2,F)
@@ -511,8 +572,8 @@ end
    @test G(x*matrix(y))==x*y
    @test matrix(x)==x.elm
 
-   xg = GAP.Globals.Random(G.X)
-   yg = GAP.Globals.Random(G.X)
+   xg = GAP.Globals.Random(GapObj(G))
+   yg = GAP.Globals.Random(GapObj(G))
    pg = MatrixGroupElem(G, xg*yg)
    @test pg == MatrixGroupElem(G, Oscar.preimage_matrix(G.ring_iso, xg))*MatrixGroupElem(G, Oscar.preimage_matrix(G.ring_iso, yg))
 
@@ -527,7 +588,7 @@ end
 end
 
 @testset "Subgroups" begin
-   T,t=polynomial_ring(GF(3),"t")
+   T,t=polynomial_ring(GF(3),:t)
    F,z=finite_field(t^2+1,"z")
 
    G = GL(2,F)
@@ -552,7 +613,7 @@ end
 end
 
 @testset "Cosets and conjugacy classes" begin
-   T,t=polynomial_ring(GF(3),"t")
+   T,t=polynomial_ring(GF(3),:t)
    F,z=finite_field(t^2+1,"z")
 
    G = GL(2,F)
@@ -595,7 +656,7 @@ end
 
 @testset "Jordan structure" begin
    F = GF(3, 1)
-   R,t = polynomial_ring(F,"t")
+   R,t = polynomial_ring(F,:t)
    G = GL(9,F)
 
    L_big = [
@@ -612,7 +673,7 @@ end
       @test parent(s)==G
       @test parent(u)==G
       @test is_coprime(order(s),3)
-      @test isone(u) || is_power(order(u))[2]==3
+      @test isone(u) || is_perfect_power_with_data(order(u))[2]==3
       @test is_semisimple(s)
       @test is_unipotent(u)
       @test s*u==G(x)
@@ -632,7 +693,7 @@ end
 
    F,z = finite_field(5,3,"z")
    G = GL(6,F)
-   R,t = polynomial_ring(F,"t")
+   R,t = polynomial_ring(F,:t)
    f = t^3+t*z+1
    x = generalized_jordan_block(f,2)
    @test generalized_jordan_block(f,2)==hvcat((2,2),companion_matrix(f),identity_matrix(F,3),zero_matrix(F,3,3),companion_matrix(f))
@@ -657,7 +718,7 @@ end
       L = Oscar._gens_for_GL(5,GF(2, 1))
       @test length(L)==2
       @test matrix_group(L...)==GL(5,GF(2, 1))
-      _,t = polynomial_ring(GF(3, 1),"t")
+      _,t = polynomial_ring(GF(3, 1),:t)
       f = t^2+t-1
       L = Oscar._gens_for_GL_matrix(f,2,GF(3, 1); D=2)
       @test length(L)==2
@@ -691,7 +752,7 @@ end
    # L = lattice(q, QQ[0 0; 0 0], isbasis=false)
    # @test order(isometry_group(L)) == 1
 
-   Qx, x = polynomial_ring(FlintQQ, "x", cached = false)
+   Qx, x = polynomial_ring(FlintQQ, :x, cached = false)
    f = x^2-2;
    K, a = number_field(f)
    D = matrix(K, 3, 3, [2, 0, 0, 0, 1, 0, 0, 0, 7436]);
@@ -711,7 +772,7 @@ end
    c = deepcopy(m);
    @test isdefined(c, :X)
    @test ! isdefined(c, :elm)
-   @test c.X == m.X
+   @test GapObj(c) == GapObj(m)
 
    m = MatrixGroupElem(g, matrix(gen(g, 1)), gen(g, 1).X)
    @test isdefined(m, :X)
@@ -719,7 +780,7 @@ end
    c = deepcopy(m);
    @test isdefined(c, :X)
    @test isdefined(c, :elm)
-   @test c.X == m.X
+   @test GapObj(c) == GapObj(m)
    @test matrix(c) == matrix(m)
 
    m = MatrixGroupElem(g, matrix(gen(g, 1)))

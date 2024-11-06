@@ -15,7 +15,7 @@ variables of `R` to be used.
 
 # Examples
 ```jldoctest
-julia> R, (x, y, z) = QQ["x", "y", "z"];
+julia> R, (x, y, z) = QQ[:x, :y, :z];
 
 julia> collect(monomials_of_degree(R, 3))
 10-element Vector{QQMPolyRingElem}:
@@ -57,7 +57,7 @@ function AllMonomials(R::MPolyDecRing, d::Int, vars::Vector{Int})
   return AllMonomials{typeof(R)}(R, d, vars)
 end
 
-Base.eltype(AM::AllMonomials) = elem_type(AM.R)
+Base.eltype(::Type{AllMonomials{PolyRingT}}) where {PolyRingT} = elem_type(PolyRingT)
 
 Base.length(AM::AllMonomials) = length(AM.weak_comp_iter)
 
@@ -91,12 +91,12 @@ function Base.show(io::IO, ::MIME"text/plain", AM::AllMonomials)
 end
 
 function Base.show(io::IO, AM::AllMonomials)
-  if get(io, :supercompact, false)
+  if is_terse(io)
     print(io, "Iterator")
   else
     io = pretty(io)
     print(io, "Iterator over the monomials of degree $(AM.d) of")
-    print(IOContext(io, :supercompact => true), Lowercase(), AM.R)
+    print(terse(io), Lowercase(), AM.R)
   end
 end
 
@@ -124,7 +124,7 @@ function dimension_via_molien_series(
 end
 
 @doc raw"""
-     iterate_basis(IR::FinGroupInvarRing, d::Int, algorithm::Symbol = :default)
+    iterate_basis(IR::FinGroupInvarRing, d::Int, algorithm::Symbol = :default)
 
 Given an invariant ring `IR` and an integer `d`, return an iterator over a basis
 for the invariants in degree `d`.
@@ -279,7 +279,7 @@ julia> R = invariant_ring(QQ, S2);
 julia> F = abelian_closure(QQ)[1];
 
 julia> chi = Oscar.class_function(S2, [ F(sign(representative(c))) for c in conjugacy_classes(S2) ])
-class_function(character table of S2, QQAbElem{AbsSimpleNumFieldElem}[1, -1])
+class_function(character table of S2, [1, -1])
 
 julia> B = iterate_basis(R, 3, chi)
 Iterator over a basis of the component of degree 3
@@ -390,7 +390,13 @@ function iterate_basis_linear_algebra(IR::FinGroupInvarRing, d::Int)
   )
 end
 
-Base.eltype(BI::FinGroupInvarRingBasisIterator) = elem_type(polynomial_ring(BI.R))
+Base.eltype(
+  ::Type{
+    <:FinGroupInvarRingBasisIterator{
+      FinGroupInvarRingT,ReynoldsT,IteratorT,PolyRingElemT,MatrixT
+    },
+  },
+) where {FinGroupInvarRingT,ReynoldsT,IteratorT,PolyRingElemT,MatrixT} = PolyRingElemT
 
 Base.length(BI::FinGroupInvarRingBasisIterator) = BI.dim
 
@@ -405,12 +411,12 @@ function Base.show(io::IO, ::MIME"text/plain", BI::FinGroupInvarRingBasisIterato
 end
 
 function Base.show(io::IO, BI::FinGroupInvarRingBasisIterator)
-  if get(io, :supercompact, false)
+  if is_terse(io)
     print(io, "Iterator")
   else
     io = pretty(io)
     print(io, "Iterator over a graded component of ")
-    print(IOContext(io, :supercompact => true), Lowercase(), BI.R)
+    print(terse(io), Lowercase(), BI.R)
   end
 end
 
@@ -543,7 +549,7 @@ end
 function vector_space_iterator(
   K::FieldT, basis_iterator::IteratorT
 ) where {
-  FieldT<:Union{Nemo.fpField,Nemo.FpField,fqPolyRepField,FqPolyRepField,FqField},IteratorT
+  FieldT<:Union{fpField,FpField,fqPolyRepField,FqPolyRepField,FqField},IteratorT
 }
   return VectorSpaceIteratorFiniteField(K, basis_iterator)
 end
@@ -553,7 +559,7 @@ vector_space_iterator(
 ) where {FieldT,IteratorT} = VectorSpaceIteratorRand(K, basis_iterator, bound)
 
 Base.eltype(
-  VSI::VectorSpaceIterator{FieldT,IteratorT,ElemT}
+  ::Type{<:VectorSpaceIterator{FieldT,IteratorT,ElemT}}
 ) where {FieldT,IteratorT,ElemT} = ElemT
 
 Base.length(VSI::VectorSpaceIteratorFiniteField) =
@@ -708,7 +714,7 @@ end
 
 iterate_partitions(M::MSet) = MSetPartitions(M)
 
-Base.eltype(MSP::MSetPartitions{T}) where {T} = Vector{MSet{T}}
+Base.eltype(::Type{MSetPartitions{T}}) where {T} = Vector{MSet{T}}
 
 function Base.iterate(MSP::MSetPartitions)
   if isempty(MSP.M)

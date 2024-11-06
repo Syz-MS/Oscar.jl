@@ -8,7 +8,7 @@ Return `true` if `g` is a pseudo-reflection, `false` otherwise. By a
 pseudo-reflection, we mean a matrix with fixed space of codimension 1.
 """
 function is_pseudo_reflection(g::MatrixGroupElem)
-  return rank(g.elm - one(parent(g)).elm) == 1
+  return rank(matrix(g) - matrix(one(parent(g)))) == 1
 end
 
 @doc raw"""
@@ -56,7 +56,7 @@ function _powers_of_root_of_unity(zeta::FieldElem, l::Int)
 end
 
 function is_subgroup_of_sl(G::MatrixGroup)
-  return all(g -> is_one(det(g.elm)), gens(G))
+  return all(g -> is_one(det(matrix(g))), gens(G))
 end
 
 # Mostly stolen from mpoly-graded.jl .
@@ -122,10 +122,10 @@ function homogenize_at_last_variable(I::MPolyIdeal, S::MPolyDecRing)
   @assert !iszero(w_perm[1]) "All given weights are zero"
 
   R = base_ring(I)
-  Rp = polynomial_ring(coefficient_ring(R), "t" => 1:ngens(R))[1]
+  Rp = polynomial_ring(coefficient_ring(R), :t => 1:ngens(R))[1]
   RtoRp = hom(R, Rp, [gen(Rp, findfirst(isequal(i), p)) for i in 1:ngens(Rp)])
 
-  Sp, _ = graded_polynomial_ring(coefficient_ring(S), ["t$i" for i in 1:ngens(S)], w_perm)
+  Sp, _ = graded_polynomial_ring(coefficient_ring(S), "t#" => 1:ngens(S), w_perm)
   SptoS = hom(Sp, S, [gens(S)[p[i]] for i in 1:ngens(S)])
 
   # Homogenize the generators

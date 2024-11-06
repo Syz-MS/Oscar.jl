@@ -24,7 +24,7 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
              # these are skipped because they slow down the tests too much:
 
              # sometimes very slow: 4000-30000s
-             "specialized/brandhorst-zach-fibration-hopping/vinberg_2.jlcon",
+             #"specialized/brandhorst-zach-fibration-hopping/vinberg_2.jlcon",
              # very slow: 24000s
              "cornerstones/number-theory/cohenlenstra.jlcon",
              # ultra slow: time unknown
@@ -32,7 +32,10 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
 
              # somewhat slow (~300s)
              "cornerstones/polyhedral-geometry/ch-benchmark.jlcon",
-             "specialized/brandhorst-zach-fibration-hopping/vinberg_3.jlcon",
+
+             # not a proper julia input file
+             "specialized/fang-fourier-monomial-bases/sl7-cases.jlcon",
+             "specialized/fang-fourier-monomial-bases/gap.jlcon",
             ]
 
   dispsize = (40, 130)
@@ -49,7 +52,7 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
       result = strip(result)
       result = replace(result, r"julia>$"s => "")
       # canonicalize numbered anonymous functions
-      result = replace(result, r"^\s*(?:#\d+)?(.* \(generic function with ).*\n"m => s"\1\n")
+      result = replace(result, r"^\s*(?:#[a-z_]+#)?(?:#\d+)?(.* \(generic function with ).*\n"m => s"\1\n")
       # remove timings
       result = replace(result, r"^\s*[0-9\.]+ seconds \(.* allocations: .*\)$"m => "<timing>\n")
       # this removes the package version slug, filename and linenumber
@@ -120,6 +123,7 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
       sym = Symbol("__", lstrip(string(gensym()), '#'))
       mockdule = Module(sym)
       # make it accessible from Main
+      @eval Main global $sym::Module
       setproperty!(Main, sym, mockdule)
       Core.eval(mockdule, :(eval(x) = Core.eval($(mockdule), x)))
       Core.eval(mockdule, :(include(x) = Base.include($(mockdule), abspath(x))))
@@ -165,7 +169,18 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
     if jlcon_mode
       input_string = "\e[200~$s\e[201~"
     end
+    haderror = false
     REPL.activate(mockrepl.mockdule)
+    # this allows us to detect errors in the middle of non-jlcon files
+    if !jlcon_mode
+      od = Base.active_repl.interface.modes[1].on_done
+      Base.active_repl.interface.modes[1].on_done = function (x...)
+                if Base.active_repl.waserror
+                  haderror = true
+                end
+                od(x...)
+              end
+    end
     result = redirect_stdout(mockrepl.out_stream) do
       input_task = @async begin
         write(mockrepl.stdin_write, input_string)
@@ -174,14 +189,25 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
       wait(input_task)
       readuntil(mockrepl.output.out, "\nEND_BLOCK")
     end
+    if !jlcon_mode
+      # restore on-done
+      Base.active_repl.interface.modes[1].on_done=od
+    end
     REPL.activate(Main)
-    return sanitize_output(result)
+    output = sanitize_output(result)
+    if !jlcon_mode && haderror
+      error("ERROR in jl-mode:\n", output)
+    end
+    return output
   end
 
   function test_chapter(chapter::String="")
     # add overlay project for plots
     custom_load_path = []
-    copy!(custom_load_path, Base.DEFAULT_LOAD_PATH)
+    old_load_path = []
+    oldrepl = isdefined(Base, :active_repl) ? Base.active_repl : nothing
+    copy!(custom_load_path, LOAD_PATH)
+    copy!(old_load_path, LOAD_PATH)
     curdir = pwd()
     act_proj = dirname(Base.active_project())
     osc_proj = dirname(Base.identify_package_env("Oscar")[2])
@@ -191,13 +217,16 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
       Pkg.add("Plots"; io=devnull)
       Pkg.activate("$act_proj"; io=devnull)
       pushfirst!(custom_load_path, plots)
+      pushfirst!(custom_load_path, osc_proj)
+      # make sure stdlibs are in the load path (like in the normal repl)
+      push!(custom_load_path, "@stdlib")
 
       oefile = joinpath(Oscar.oscardir, "test/book/ordered_examples.json")
       ordered_examples = load(oefile)
       if length(chapter) > 0
         ordered_examples = Dict("$chapter" => ordered_examples[chapter])
       end
-      withenv("LINES" => dispsize[1], "COLUMNS" => dispsize[2], "DISPLAY" => "") do
+      withenv("LINES" => dispsize[1], "COLUMNS" => dispsize[2], "DISPLAY" => "", "GKSwstype" => "nul") do
         for (chapter, example_list) in ordered_examples
           cd(curdir)
           @testset "$chapter" verbose=true begin
@@ -206,20 +235,19 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
             println("  created mockrepl: $(mockrepl.mockdule)")
 
             # clear verbosity levels before each chapter
-            empty!(Hecke.VERBOSE_LOOKUP)
+            empty!(AbstractAlgebra.VERBOSE_LOOKUP)
 
             copy!(LOAD_PATH, custom_load_path)
             auxmain = joinpath(Oscar.oscardir, "test/book", chapter, "auxiliary_code", "main.jl")
+            # run from temp dir
+            temp = mktempdir()
+            cd(temp)
             if isfile(auxmain)
               # add overlay project for aux file
-              # and run it from temp dir
-              temp = mktempdir()
               Pkg.activate(temp; io=devnull)
-              pushfirst!(LOAD_PATH, "$osc_proj")
               cp(auxmain,joinpath(temp, "main.jl"))
-              cd(temp)
               run_repl_string(mockrepl, """include("$(joinpath(temp,"main.jl"))")\n""")
-              LOAD_PATH[1] = temp
+              pushfirst!(LOAD_PATH, temp)
               Pkg.activate("$act_proj"; io=devnull)
               println("      done with aux")
             end
@@ -234,7 +262,7 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
               content = read(joinpath(Oscar.oscardir, "test/book", full_file), String)
               if filetype == :jlcon && !occursin("julia> ", content)
                 filetype = :jl
-                @warn "possibly wrong file type: $full_file"
+                @debug "possibly wrong file type: $full_file"
               end
               if full_file in skipped
                 @test run_repl_string(mockrepl, content) isa AbstractString skip=true
@@ -264,10 +292,10 @@ isdefined(Main, :FakeTerminals) || include(joinpath(pkgdir(REPL),"test","FakeTer
       end
     finally
       # restore some state
-      Main.REPL.activate(Main)
+      isnothing(oldrepl) || Main.REPL.activate(Main)
       Pkg.activate("$act_proj"; io=devnull)
       cd(curdir)
-      copy!(LOAD_PATH, Base.DEFAULT_LOAD_PATH)
+      copy!(LOAD_PATH, old_load_path)
     end
     nothing
   end

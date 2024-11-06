@@ -591,7 +591,7 @@ julia> f = factor_absolute((X[1]^2+a[1]*X[2]^2)*(X[1]+2*X[2]+3*a[1]+4*a[2]))
 
 julia> parent(f[3][1])
 Multivariate polynomial ring in 2 variables X[1], X[2]
-  over fraction field of multivariate polynomial ring
+  over fraction field of Qa
 
 julia> parent(f[2][1])
 Multivariate polynomial ring in 2 variables X[1], X[2]
@@ -608,7 +608,7 @@ function Oscar.factor_absolute(f::MPolyRingElem{Generic.FracFieldElem{QQMPolyRin
   an = []
   push!(an, Qtx(cont)*Oscar.AbstractAlgebra._restore_numerators(Qtx, lF.unit))
   K = base_ring(f)
-  Kt, t = polynomial_ring(K, "t", cached = false)
+  Kt, t = polynomial_ring(K, :t, cached = false)
   for (k, e) = sort(collect(lF), lt = (a,b) -> _cmp(a[1], b[1]) <= 0)
     res = afact(k, collect(ngens(Qtx)+1:ngens(Qtx)+ngens(Qt)))
     if res === nothing
@@ -790,7 +790,7 @@ function afact(g::QQMPolyRingElem, a::Vector{Int}; int::Bool = false)
         push!(pres, Qt(res[i:i+j]))
         i += j+1
       end
-      d = findfirst(x->x == maximum(degs), degs)
+      d = findfirst(==(maximum(degs)), degs)
       co = []
       for i=1:length(pres)
         push!(co, lift(pres[d], pres[i], coeff(fac, d), coeff(fac, i), fpt))

@@ -228,7 +228,7 @@ function (fac::SimplifiedChainFactory)(d::AbsHyperComplex, Ind::Tuple)
       w = Tinv[i]
       new_entries = Vector{Tuple{Int, elem_type(base_ring(w))}}()
       for (real_j, b) in w
-        j = findfirst(k->k==real_j, J)
+        j = findfirst(==(real_j), J)
         j === nothing && continue
         push!(new_entries, (j, b))
       end
@@ -248,6 +248,7 @@ function (fac::SimplifiedChainFactory)(d::AbsHyperComplex, Ind::Tuple)
 end
 
 function can_compute(fac::SimplifiedChainFactory, c::AbsHyperComplex, I::Tuple)
+  @assert dim(c) == 1
   i = first(I)
   can_compute_index(original_complex(fac), I) || return false
   I_p = (i+1,)
@@ -331,6 +332,14 @@ function can_compute(fac::BaseChangeFromOriginalFactory, phi::AbsHyperComplexMor
   return can_compute_index(d, I)
 end
 
+
+function simplify(c::FreeResolution)
+  return simplify(SimpleComplexWrapper(c.C))
+end
+
+function simplify(c::ComplexOfMorphisms)
+  return simplify(SimpleComplexWrapper(c))
+end
 
 function simplify(c::AbsHyperComplex{ChainType, MorphismType}) where {ChainType, MorphismType}
   @assert dim(c) == 1 "complex must be one-dimensional"
@@ -500,12 +509,22 @@ function _simplify_matrix!(A::SMat; find_pivot=nothing)
     end
 
     # Adjust Sinv_transp
-    inc_row = sum(a*Sinv_transp[i] for (i, a) in a_col_del; init=sparse_row(R))
+    #inc_row = sum(a*Sinv_transp[i] for (i, a) in a_col_del; init=sparse_row(R))
+    inc_row = sparse_row(R)
+    for (i, a) in a_col_del
+      #is_zero(Sinv_transp[i]) && continue # can not be true since S is invertible
+      Hecke.add_scaled_row!(Sinv_transp[i], inc_row, a)
+    end
     Hecke.add_scaled_row!(inc_row, Sinv_transp[p], uinv)
 
     # Adjust T
     #T[q] = T[q] + sum(uinv*a*T[i] for (i, a) in a_row_del; init=sparse_row(R))
-    Hecke.add_scaled_row!(sum(a*T[i] for (i, a) in a_row_del if !iszero(T[i]); init=sparse_row(R)), T[q], uinv)
+    inc_row = sparse_row(R)
+    for (i, a) in a_row_del
+      # is_zero(T[i]) && continue # can not be true since T is invertible
+      Hecke.add_scaled_row!(T[i], inc_row, a)
+    end
+    Hecke.add_scaled_row!(inc_row, T[q], uinv)
 
     # Adjust Tinv_transp
     v = deepcopy(Tinv_transp[q])
@@ -531,7 +550,7 @@ function sparse_matrix(phi::FreeModuleHom{FreeMod{T}, FreeMod{T}, Nothing}) wher
   n = ngens(W)
   result = sparse_matrix(kk, m, n)
   for i in 1:m
-    result[i] = phi(V[i]).coords
+    result[i] = coordinates(phi(V[i]))
   end
   return result
 end
@@ -658,8 +677,8 @@ function kernel(simp::SimplifiedComplex{ChainType}, p::Int, i::Tuple) where {Cha
     return K, inc
   end
 
-  psi = map_to_original(simp)[i]
-  phi = map(c, p, i)
+  psi = map_to_original_complex(simp)[i]
+  phi = map(original_complex(simp), p, i)
   K, inc = kernel(compose(psi, phi))
   c.kernel_cache[(i, p)] = inc
   return K, inc

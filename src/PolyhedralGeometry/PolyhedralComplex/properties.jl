@@ -5,7 +5,7 @@ Return the ambient dimension of `PC`.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]])
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]])
 2×4 IncidenceMatrix
 [1, 2, 3]
 [1, 3, 4]
@@ -28,16 +28,20 @@ julia> ambient_dim(PC)
 ambient_dim(PC::PolyhedralComplex) = Polymake.fan.ambient_dim(pm_object(PC))::Int
 
 @doc raw"""
-    vertices([as::Type,] PC::PolyhedralComplex)
+    vertices([as::Type{T} = PointVector,] PC::PolyhedralComplex)
 
-Return an iterator over the vertices of `PC` in the format defined by `as`.
+Return an iterator over the vertices of `PC` in the format defined by `as`. The
+vertices are defined to be the zero-dimensional faces, so if `P` has lineality,
+there are no vertices, only minimal faces.
+
+See also [`minimal_faces`](@ref minimal_faces(PC::PolyhedralComplex{T}) where {T<:scalar_types}) and [`rays`](@ref rays(PC::PolyhedralComplex{T}) where {T<:scalar_types}).
 
 Optional arguments for `as` include
 * `PointVector`.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> V = [0 0; 1 0; 1 1; 0 1];
 
@@ -51,17 +55,36 @@ julia> vertices(PC)
  [1, 1]
  [0, 1]
 
-julia> matrix(QQ, vertices(PC))
+julia> matrix(QQ, vertices(PointVector, PC))
 [0   0]
 [1   0]
 [1   1]
 [0   1]
+```
+The following complex has no vertices:
+```
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
+
+julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
+
+julia> far_vertices = [2,3,4];
+
+julia> L = [0 0 1];
+
+julia> PC = polyhedral_complex(IM, VR, far_vertices, L)
+Polyhedral complex in ambient dimension 3
+
+julia> vertices(PC)
+0-element SubObjectIterator{PointVector{QQFieldElem}}
 ```
 """
 vertices(as::Type{PointVector{T}}, PC::PolyhedralComplex{T}) where {T<:scalar_types} =
   lineality_dim(PC) == 0 ? _vertices(as, PC) : _empty_subobjectiterator(as, PC)
 _vertices(as::Type{PointVector{T}}, PC::PolyhedralComplex{T}) where {T<:scalar_types} =
   SubObjectIterator{as}(PC, _vertex_complex, length(_vertex_indices(pm_object(PC))))
+
+vertices(as::Type{<:PointVector}, PC::PolyhedralComplex{T}) where {T<:scalar_types} =
+  vertices(PointVector{T}, PC)
 
 _vertex_complex(
   U::Type{PointVector{T}}, PC::PolyhedralComplex{T}, i::Base.Integer
@@ -108,6 +131,34 @@ _vertices(
   PC, _vertex_or_ray_complex, length(_all_vertex_indices(pm_object(PC)))
 )
 
+@doc raw"""
+    vertices_and_rays(PC::PolyhedralComplex)
+
+Return the vertices and rays of `PC` as a combined set, up to lineality. This
+function is mainly a helper function for [`maximal_polyhedra`](@ref maximal_polyhedra(PC::PolyhedralComplex{T}) where {T<:scalar_types}).
+
+# Examples
+```jldoctest
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
+
+julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
+
+julia> far_vertices = [2,3,4];
+
+julia> L = [0 0 1];
+
+julia> PC = polyhedral_complex(IM, VR, far_vertices, L)
+Polyhedral complex in ambient dimension 3
+
+julia> for vr in vertices_and_rays(PC)
+       println("$vr : $(typeof(vr))")
+       end
+QQFieldElem[0, 0, 0] : PointVector{QQFieldElem}
+QQFieldElem[1, 0, 0] : RayVector{QQFieldElem}
+QQFieldElem[0, 1, 0] : RayVector{QQFieldElem}
+QQFieldElem[-1, 0, 0] : RayVector{QQFieldElem}
+```
+"""
 vertices_and_rays(PC::PolyhedralComplex{T}) where {T<:scalar_types} =
   _vertices(Union{PointVector{T},RayVector{T}}, PC)
 
@@ -131,16 +182,18 @@ rays(as::Type{RayVector{T}}, PC::PolyhedralComplex{T}) where {T<:scalar_types} =
 @doc raw"""
     rays_modulo_lineality(as, PC::PolyhedralComplex)
 
-Return the rays of the recession cone of `PC` up to lineality as a `NamedTuple`
+Return the rays of the recession fan of `PC` up to lineality as a `NamedTuple`
 with two iterators. If `PC` has lineality `L`, then the iterator
 `rays_modulo_lineality` iterates over representatives of the rays of `PC/L`.
 The iterator `lineality_basis` gives a basis of the lineality space `L`.
+
+See also [`rays`](@ref rays(PC::PolyhedralComplex{T}) where {T<:scalar_types}) and [`lineality_space`](@ref lineality_space(PC::PolyhedralComplex{T}) where {T<:scalar_types}).
 
 # Examples
 ```jldoctest
 julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
 
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -200,11 +253,13 @@ translation `p+L`, where `p` is only unique modulo `L`. The return type is a
 dict, the key `:base_points` gives an iterator over such `p`, and the key
 `:lineality_basis` lets one access a basis for the lineality space `L` of `PC`.
 
+See also [`vertices`](@ref vertices(as::Type{PointVector{T}}, PC::PolyhedralComplex{T}) where {T<:scalar_types}) and [`lineality_space`](@ref).
+
 # Examples
 ```jldoctest
 julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
 
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -249,13 +304,20 @@ minimal_faces(as::Type{PointVector{T}}, PC::PolyhedralComplex{T}) where {T<:scal
   _vertices(PointVector{T}, PC)
 
 @doc raw"""
-    rays(PC::PolyhedralComplex)
+    rays([as::Type{T} = RayVector,] PC::PolyhedralComplex)
 
-Return the rays of `PC`
+Return the rays of `PC`. The rays are defined to be the far vertices, i.e. the
+one-dimensional faces of the recession cones of its polyhedra, so if `PC` has
+lineality, there are no rays.
+
+See also [`rays_modulo_lineality`](@ref rays_modulo_lineality(PC::PolyhedralComplex{T}) where {T<:scalar_types}) and [`vertices`](@ref vertices(as::Type{PointVector{T}}, PC::PolyhedralComplex{T}) where {T<:scalar_types}).
+
+Optional arguments for `as` include
+* `RayVector`.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> VR = [0 0; 1 0; 1 1; 0 1];
 
@@ -266,12 +328,31 @@ julia> rays(PC)
 1-element SubObjectIterator{RayVector{QQFieldElem}}:
  [1, 0]
 
-julia> matrix(QQ, rays(PC))
+julia> matrix(QQ, rays(RayVector, PC))
 [1   0]
+```
+The following complex has no vertices:
+```
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
+
+julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
+
+julia> far_vertices = [2,3,4];
+
+julia> L = [0 0 1];
+
+julia> PC = polyhedral_complex(IM, VR, far_vertices, L)
+Polyhedral complex in ambient dimension 3
+
+julia> rays(PC)
+0-element SubObjectIterator{RayVector{QQFieldElem}}
 ```
 """
 rays(PC::PolyhedralComplex{T}) where {T<:scalar_types} = rays(RayVector{T}, PC)
 _rays(PC::PolyhedralComplex{T}) where {T<:scalar_types} = _rays(RayVector{T}, PC)
+
+rays(as::Type{<:RayVector}, PC::PolyhedralComplex{T}) where {T<:scalar_types} =
+  rays(RayVector{T}, PC)
 
 _ray_indices_polyhedral_complex(PC::Polymake.BigObject) =
   collect(Polymake.to_one_based_indexing(PC.FAR_VERTICES))
@@ -311,9 +392,13 @@ _vertex_and_ray_indices(::Val{_maximal_polyhedron}, PC::PolyhedralComplex) =
 
 Return the maximal polyhedra of `PC`
 
+Optionally `IncidenceMatrix` can be passed as a first argument to return the
+incidence matrix specifying the maximal polyhedra of `PC`. The indices returned
+refer to the output of [`vertices_and_rays`](@ref vertices_and_rays(PC::PolyhedralComplex{T}) where {T<:scalar_types}).
+
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]])
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]])
 2×4 IncidenceMatrix
 [1, 2, 3]
 [1, 3, 4]
@@ -333,6 +418,11 @@ julia> maximal_polyhedra(PC)
 2-element SubObjectIterator{Polyhedron{QQFieldElem}}:
  Polyhedron in ambient dimension 2
  Polytope in ambient dimension 2
+
+julia> maximal_polyhedra(IncidenceMatrix, PC)
+2×4 IncidenceMatrix
+[1, 2, 3]
+[1, 3, 4]
 ```
 """
 maximal_polyhedra(PC::PolyhedralComplex{T}) where {T<:scalar_types} =
@@ -345,7 +435,7 @@ Return the number of maximal polyhedra of `PC`
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]])
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]])
 2×4 IncidenceMatrix
 [1, 2, 3]
 [1, 3, 4]
@@ -374,7 +464,7 @@ Determine whether the polyhedral complex is simplicial.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> VR = [0 0; 1 0; 1 1; 0 1];
 
@@ -394,7 +484,7 @@ Determine whether the polyhedral complex is pure.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> VR = [0 0; 1 0; 1 1; 0 1];
 
@@ -414,7 +504,7 @@ Compute the dimension of the polyhedral complex.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> VR = [0 0; 1 0; 1 1; 0 1];
 
@@ -434,7 +524,7 @@ Return the polyhedra of a given dimension in the polyhedral complex `PC`.
 
 # Examples
 ```jldoctest
-julia> IM = IncidenceMatrix([[1,2,3],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
 
 julia> VR = [0 0; 1 0; 1 1; 0 1];
 
@@ -497,6 +587,29 @@ function _ith_polyhedron(
   )
 end
 
+@doc raw"""
+    lineality_space(PC::PolyhedralComplex)
+
+Return the lineality space of `PC`.
+
+# Examples
+```jldoctest
+julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
+
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
+
+julia> far_vertices = [2,3,4];
+
+julia> L = [0 0 1];
+
+julia> PC = polyhedral_complex(IM, VR, far_vertices, L)
+Polyhedral complex in ambient dimension 3
+
+julia> lineality_space(PC)
+1-element SubObjectIterator{RayVector{QQFieldElem}}:
+ [0, 0, 1]
+```
+"""
 lineality_space(PC::PolyhedralComplex{T}) where {T<:scalar_types} =
   SubObjectIterator{RayVector{T}}(PC, _lineality_complex, lineality_dim(PC))
 
@@ -514,19 +627,41 @@ _generator_matrix(::Val{_lineality_complex}, PC::PolyhedralComplex; homogenized=
 
 _matrix_for_polymake(::Val{_lineality_complex}) = _generator_matrix
 
+@doc raw"""
+    lineality_dim(PC::PolyhedralComplex)
+
+Return the lineality dimension of `PC`.
+
+# Examples
+```jldoctest
+julia> VR = [0 0 0; 1 0 0; 0 1 0; -1 0 0];
+
+julia> IM = incidence_matrix([[1,2,3],[1,3,4]]);
+
+julia> far_vertices = [2,3,4];
+
+julia> L = [0 0 1];
+
+julia> PC = polyhedral_complex(IM, VR, far_vertices, L)
+Polyhedral complex in ambient dimension 3
+
+julia> lineality_dim(PC)
+1
+```
+"""
 lineality_dim(PC::PolyhedralComplex) = pm_object(PC).LINEALITY_DIM::Int
 
 @doc raw"""
     f_vector(PC::PolyhedralComplex)
 
-Compute the vector $(f₀,f₁,f₂,...,f_{dim(PC))$` where $f_i$ is the number of
+Compute the vector $(f₀,f₁,f₂,...,f_{dim(PC)})$ where $f_i$ is the number of
 faces of $PC$ of dimension $i$.
 
 # Examples
 ```jldoctest
 julia> VR = [0 0; 1 0; -1 0; 0 1];
 
-julia> IM = IncidenceMatrix([[1,2,4],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,4],[1,3,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -554,7 +689,7 @@ Return the number of rays of `PC`.
 ```jldoctest
 julia> VR = [0 0; 1 0; -1 0; 0 1];
 
-julia> IM = IncidenceMatrix([[1,2,4],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,4],[1,3,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -576,7 +711,7 @@ Return the number of vertices of `PC`.
 ```jldoctest
 julia> VR = [0 0; 1 0; -1 0; 0 1];
 
-julia> IM = IncidenceMatrix([[1,2,4],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,4],[1,3,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -598,7 +733,7 @@ Return the total number of polyhedra in the polyhedral complex `PC`.
 ```jldoctest
 julia> VR = [0 0; 1 0; -1 0; 0 1];
 
-julia> IM = IncidenceMatrix([[1,2,4],[1,3,4]]);
+julia> IM = incidence_matrix([[1,2,4],[1,3,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -619,7 +754,7 @@ Compute the codimension of a polyhedral complex.
 ```
 julia> VR = [0 0; 1 0; -1 0; 0 1];
 
-julia> IM = IncidenceMatrix([[1,2],[1,3],[1,4]]);
+julia> IM = incidence_matrix([[1,2],[1,3],[1,4]]);
 
 julia> far_vertices = [2,3,4];
 
@@ -642,7 +777,7 @@ subset of some $\mathbb{R}^n$.
 ```jldoctest
 julia> VR = [0 0; 1 0; -1 0; 0 1];
 
-julia> IM = IncidenceMatrix([[1,2],[1,3],[1,4]]);
+julia> IM = incidence_matrix([[1,2],[1,3],[1,4]]);
 
 julia> PC = polyhedral_complex(IM, VR)
 Polyhedral complex in ambient dimension 2

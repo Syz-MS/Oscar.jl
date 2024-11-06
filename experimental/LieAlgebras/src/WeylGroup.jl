@@ -7,41 +7,6 @@
 #
 ###############################################################################
 
-struct WeylGroup <: AbstractAlgebra.Group
-  finite::Bool              # finite indicates whether the Weyl group is finite
-  refl::Matrix{UInt}        # see positive_roots_and_reflections
-  root_system::RootSystem   # root_system is the RootSystem from which the Weyl group was constructed
-
-  function WeylGroup(finite::Bool, refl::Matrix{UInt}, root_system::RootSystem)
-    return new(finite, refl, root_system)
-  end
-end
-
-struct WeylGroupElem <: AbstractAlgebra.GroupElem
-  parent::WeylGroup     # parent group
-  word::Vector{UInt8}   # short revlex normal form of the word
-
-  function WeylGroupElem(W::WeylGroup, word::Vector{<:Integer}; normalize::Bool=true)
-    if !normalize
-      if word isa Vector{UInt8}
-        return new(W, word)
-      else
-        return new(W, UInt8.(word))
-      end
-    end
-
-    @req all(1 <= i <= ngens(W) for i in word) "word contains invalid generators"
-    x = new(W, sizehint!(UInt8[], length(word)))
-    for s in Iterators.reverse(word)
-      lmul!(x, s)
-    end
-
-    return x
-  end
-end
-
-const WeylIteratorNoCopyState = Tuple{WeightLatticeElem,WeylGroupElem}
-
 @doc raw"""
     weyl_group(cartan_matrix::ZZMatrix) -> WeylGroup
 
@@ -55,6 +20,12 @@ end
     weyl_group(fam::Symbol, rk::Int) -> WeylGroup
 
 Returns the Weyl group of the given type. See `cartan_matrix(fam::Symbol, rk::Int)` for allowed combinations.
+
+# Examples
+```jldoctest
+julia> weyl_group(:A, 2)
+Weyl group for root system defined by Cartan matrix [2 -1; -1 2]
+```
 """
 function weyl_group(fam::Symbol, rk::Int)
   return weyl_group(root_system(fam, rk))
@@ -82,7 +53,7 @@ end
     (W::WeylGroup)(word::Vector{Int}) -> WeylGroupElem
 """
 function (W::WeylGroup)(word::Vector{<:Integer}; normalize::Bool=true)
-  return weyl_group_elem(W, word; normalize=normalize)
+  return WeylGroupElem(W, word; normalize=normalize)
 end
 
 function Base.IteratorSize(::Type{WeylGroup})
@@ -122,7 +93,9 @@ function Base.one(W::WeylGroup)
 end
 
 function Base.show(io::IO, W::WeylGroup)
-  print(io, "Weyl group for $(W.root_system)")
+  @show_name(io, W)
+  @show_special(io, W)
+  print(pretty(io), LowercaseOff(), "Weyl group for ", Lowercase(), W.root_system)
 end
 
 function coxeter_matrix(W::WeylGroup)
@@ -221,14 +194,6 @@ end
 ###############################################################################
 # Weyl group elements
 
-function weyl_group_elem(R::RootSystem, word::Vector{<:Integer}; normalize::Bool=true)
-  return WeylGroupElem(weyl_group(R), word; normalize=normalize)
-end
-
-function weyl_group_elem(W::WeylGroup, word::Vector{<:Integer}; normalize::Bool=true)
-  return WeylGroupElem(W, word; normalize=normalize)
-end
-
 function Base.:(*)(x::WeylGroupElem, y::WeylGroupElem)
   @req x.parent === y.parent "$x, $y must belong to the same Weyl group"
 
@@ -239,11 +204,22 @@ function Base.:(*)(x::WeylGroupElem, y::WeylGroupElem)
   return p
 end
 
+function Base.:(*)(x::WeylGroupElem, r::RootSpaceElem)
+  @req root_system(parent(x)) === root_system(r) "Incompatible root systems"
+
+  r2 = deepcopy(r)
+  for s in Iterators.reverse(word(x))
+    reflect!(r2, Int(s))
+  end
+
+  return r2
+end
+
 function Base.:(*)(x::WeylGroupElem, w::WeightLatticeElem)
   @req root_system(parent(x)) === root_system(w) "Incompatible root systems"
 
   w2 = deepcopy(w)
-  for s in Iterators.reverse(x.word)
+  for s in Iterators.reverse(word(x))
     reflect!(w2, Int(s))
   end
 
@@ -260,7 +236,7 @@ function Base.:(^)(x::WeylGroupElem, n::Int)
 
   px = deepcopy(x)
   for _ in 2:n
-    for s in Iterators.reverse(x.word)
+    for s in Iterators.reverse(word(x))
       lmul!(px, s)
     end
   end
@@ -269,26 +245,33 @@ function Base.:(^)(x::WeylGroupElem, n::Int)
 end
 
 @doc raw"""
-    Base.:(<)(x::WeylGroupElem, y::WeylGroupElem)
+    <(x::WeylGroupElem, y::WeylGroupElem) -> Bool
 
-Returns whether `x` is smaller than `y` with respect to the Bruhat order.
+Returns whether `x` is smaller than `y` with respect to the Bruhat order,
+i.e., whether some (not necessarily connected) subexpression of a reduced
+decomposition of `y`, is a reduced decomposition of `x`.
 """
 function Base.:(<)(x::WeylGroupElem, y::WeylGroupElem)
   @req parent(x) === parent(y) "$x, $y must belong to the same Weyl group"
 
   if length(x) >= length(y)
     return false
+  elseif isone(x)
+    return true
   end
 
-  # x < y in the Bruhat order, iff some (not necessarily connected) subexpression
-  # of a reduced decomposition of y, is a reduced decomposition of x
-  j = length(x)
-  for i in length(y):-1:1
-    if word(y)[i] == word(x)[j]
-      j -= 1
-      if j == 0
+  tx = deepcopy(x)
+  for i in 1:length(y)
+    b, j, _ = explain_lmul(tx, y[i])
+    if !b
+      deleteat!(word(tx), j)
+      if isone(tx)
         return true
       end
+    end
+
+    if length(tx) > length(y) - i
+      return false
     end
   end
 
@@ -296,7 +279,7 @@ function Base.:(<)(x::WeylGroupElem, y::WeylGroupElem)
 end
 
 function Base.:(==)(x::WeylGroupElem, y::WeylGroupElem)
-  return x.parent === y.parent && x.word == y.word
+  return parent(x) === parent(y) && word(x) == word(y)
 end
 
 function Base.deepcopy_internal(x::WeylGroupElem, dict::IdDict)
@@ -320,8 +303,8 @@ end
 
 function Base.hash(x::WeylGroupElem, h::UInt)
   b = 0x80f0abce1c544784 % UInt
-  h = hash(x.parent, h)
-  h = hash(x.word, h)
+  h = hash(parent(x), h)
+  h = hash(word(x), h)
 
   return xor(h, b)
 end
@@ -377,10 +360,12 @@ function Base.rand(rng::Random.AbstractRNG, rs::Random.SamplerTrivial{WeylGroup}
 end
 
 function Base.show(io::IO, x::WeylGroupElem)
-  if length(x.word) == 0
+  @show_name(io, x)
+  @show_special_elem(io, x)
+  if length(word(x)) == 0
     print(io, "id")
   else
-    print(io, join(Iterators.map(i -> "s$i", x.word), " * "))
+    print(io, join(Iterators.map(i -> "s$i", word(x)), " * "))
   end
 end
 
@@ -399,6 +384,20 @@ end
 Returns the result of multiplying `x` in place from the left by the `i`th simple reflection.
 """
 function lmul!(x::WeylGroupElem, i::Integer)
+  b, j, r = explain_lmul(x, i)
+  if b
+    insert!(word(x), j, r)
+  else
+    deleteat!(word(x), j)
+  end
+
+  return x
+end
+
+# explains what multiplication of s_i from the left will do.
+# Returns a tuple where the first entry is true/false, depending on whether an insertion or deletion will happen,
+# the second entry is the position, and the third is the simple root.
+function explain_lmul(x::WeylGroupElem, i::Integer)
   @req 1 <= i <= rank(root_system(parent(x))) "Invalid generator"
 
   insert_index = 1
@@ -407,14 +406,13 @@ function lmul!(x::WeylGroupElem, i::Integer)
   root = insert_letter
   for s in 1:length(x)
     if x[s] == root
-      deleteat!(word(x), s)
-      return x
+      return false, s, x[s]
     end
 
     root = parent(x).refl[Int(x[s]), Int(root)]
     if iszero(root)
       # r is no longer a minimal root, meaning we found the best insertion point
-      break
+      return true, insert_index, insert_letter
     end
 
     # check if we have a better insertion point now. Since word[i] is a simple
@@ -425,8 +423,7 @@ function lmul!(x::WeylGroupElem, i::Integer)
     end
   end
 
-  insert!(word(x), insert_index, insert_letter)
-  return x
+  return true, insert_index, insert_letter
 end
 
 function parent_type(::Type{WeylGroupElem})
@@ -445,14 +442,93 @@ function word(x::WeylGroupElem)
   return x.word
 end
 
+function fp_group(W::WeylGroup; set_properties::Bool=true)
+  return codomain(isomorphism(FPGroup, W; set_properties))
+end
+
+function isomorphism(::Type{FPGroup}, W::WeylGroup; set_properties::Bool=true)
+  R = root_system(W)
+  F = free_group(rank(R))
+
+  gcm = cartan_matrix(R)
+  rels = [
+    (gen(F, i) * gen(F, j))^coxeter_matrix_entry_from_cartan_matrix(gcm, i, j) for
+    i in 1:rank(R) for j in i:rank(R)
+  ]
+
+  G, _ = quo(F, rels)
+
+  if set_properties
+    set_is_finite(G, is_finite(W))
+    is_finite(W) && set_order(G, order(W))
+  end
+
+  iso = function (w::WeylGroupElem)
+    return G([i => 1 for i in word(w)])
+  end
+
+  isoinv = function (g::FPGroupElem)
+    return W(abs.(letters(g)))
+  end
+
+  return MapFromFunc(W, G, iso, isoinv)
+end
+
+function permutation_group(W::WeylGroup; set_properties::Bool=true)
+  return codomain(isomorphism(PermGroup, W; set_properties))
+end
+
+function isomorphism(::Type{PermGroup}, W::WeylGroup; set_properties::Bool=true)
+  @req is_finite(W) "Weyl group is not finite"
+  R = root_system(W)
+  type, ordering = root_system_type_with_ordering(R)
+
+  if length(type) != 1
+    error("Not implemented (yet)")
+  end
+  if !issorted(ordering)
+    error("Not implemented (yet)")
+  end
+  coxeter_type, n = only(type)
+  if coxeter_type == :A
+    G = symmetric_group(n + 1)
+
+    iso = function (w::WeylGroupElem)
+      reduce(*, [cperm(G, [i, i + 1]) for i in word(w)]; init=cperm(G))
+    end
+
+    isoinv = function (p::PermGroupElem)
+      word = UInt8[]
+      for cycle in cycles(p)
+        transpositions = [
+          sort([c, cycle[i + 1]]) for (i, c) in enumerate(cycle) if i < length(cycle)
+        ]
+        for t in transpositions
+          word = reduce(
+            vcat,
+            [
+              [i for i in t[1]:(t[2] - 1)],
+              [i for i in reverse(t[1]:(t[2] - 2))],
+              word,
+            ],
+          )
+        end
+      end
+      return W(word)
+    end
+  else
+    error("Not implemented (yet)")
+  end
+
+  if set_properties
+    set_order(G, order(W))
+  end
+
+  return MapFromFunc(W, G, iso, isoinv)
+end
+
 ###############################################################################
 # ReducedExpressionIterator
-
-struct ReducedExpressionIterator
-  el::WeylGroupElem         # the Weyl group element for which we a searching reduced expressions
-  #letters::Vector{UInt8}   # letters are the simple reflections occuring in one (hence any) reduced expression of el
-  up_to_commutation::Bool   # if true and say s1 and s3 commute, we only list s3*s1 and not s1*s3
-end
 
 function Base.IteratorSize(::Type{ReducedExpressionIterator})
   return Base.SizeUnknown()
@@ -468,6 +544,8 @@ function Base.iterate(iter::ReducedExpressionIterator)
 end
 
 function Base.iterate(iter::ReducedExpressionIterator, word::Vector{UInt8})
+  isempty(word) && return nothing
+
   rk = rank(root_system(parent(iter.el)))
 
   # we need to copy word; iterate behaves differently when length is (not) known
@@ -518,14 +596,6 @@ end
 # or analogously over all elements in the quotient W/W_P
 # The iterator returns a tuple (wt, x), such that x*wt == iter.weight;
 # this choice is made to align with conjugate_dominant_weight_with_elem
-struct WeylIteratorNoCopy
-  weight::WeightLatticeElem # dominant weight
-  weyl_group::WeylGroup
-
-  function WeylIteratorNoCopy(wt::WeightLatticeElem)
-    return new(conjugate_dominant_weight(wt), weyl_group(root_system(wt)))
-  end
-end
 
 function Base.IteratorSize(::Type{WeylIteratorNoCopy})
   return Base.SizeUnknown()
@@ -614,14 +684,6 @@ end
 ###############################################################################
 # WeylOrbitIterator
 
-struct WeylOrbitIterator
-  nocopy::WeylIteratorNoCopy
-
-  function WeylOrbitIterator(wt::WeightLatticeElem)
-    return new(WeylIteratorNoCopy(wt))
-  end
-end
-
 @doc raw"""
     weyl_orbit(wt::WeightLatticeElem)
 
@@ -659,8 +721,7 @@ end
 
 function Base.iterate(iter::WeylOrbitIterator)
   (wt, _), data = iterate(iter.nocopy)
-  # wt is already a copy, so here we don't need to make one
-  return wt, data
+  return deepcopy(wt), data
 end
 
 function Base.iterate(iter::WeylOrbitIterator, state::WeylIteratorNoCopyState)
