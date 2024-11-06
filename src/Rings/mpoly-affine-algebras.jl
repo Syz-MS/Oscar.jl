@@ -106,6 +106,18 @@ function vector_space_dimension(A::MPolyQuoRing)
   return Singular.vdim(singular_generators(G, G.ord))
 end
 
+function _monomial_basis(R::MPolyRing, I::MPolyIdeal)
+  @req coefficient_ring(R) isa AbstractAlgebra.Field "The coefficient ring must be a field"  
+  base_ring(I) === R || error("ideal does not belong to the correct ring")
+  dim(I) <= 0 || throw(InfiniteDimensionError())
+  G = standard_basis(I)
+  if dim(I) == -1 # I is the whole ring
+    return elem_type(R)[]
+  end
+  si = Singular.kbase(singular_generators(G, G.ord))
+  return gens(MPolyIdeal(R, si))
+end
+
 @doc raw"""
     monomial_basis(A::MPolyQuoRing)
 
@@ -139,16 +151,8 @@ julia> L = monomial_basis(A)
  1
 ```
 """
-function monomial_basis(A::MPolyQuoRing)
-  @req coefficient_ring(A) isa AbstractAlgebra.Field "The coefficient ring must be a field"
-  is_finite_dimensional_vector_space(A) || throw(InfiniteDimensionError())
-  I = A.I
-  G = standard_basis(I)
-  if dim(I) == -1 # I is the whole ring
-    return elem_type(base_ring(A))[]
-  end
-  si = Singular.kbase(singular_generators(G, G.ord))
-  return gens(MPolyIdeal(base_ring(I), si))
+function monomial_basis(A::MPolyQuoRing) 
+  return _monomial_basis(base_ring(A), modulus(A))
 end
 
 @doc raw"""
