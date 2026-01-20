@@ -72,6 +72,9 @@ end
 Return the `k`-th local Tjurina algebra of `(X,p)` at `p`. 
 By default computes the local Tjurina algebra (`k=0`) at `p`.
 Higher Tjurina algebras are of interest in positive characteristic.
+!!! note
+    For better readability and for saving memory the Tjurina algebra of the corresponding HypersurfaceGerm shifted to the origin '0' is actually computed and returned.
+
 # Examples
 ```jldoctest
 julia> R,(x,y) = QQ[:x, :y];
@@ -135,8 +138,6 @@ function tjurina_algebra(f::MPolyLocRingElem{<:Any, <:Any, <:Any, <:Any, <:MPoly
   X = HypersurfaceGerm(quo(parent(f), ideal(parent(f), f))[1])
   return tjurina_algebra(X, k)
 end
-
-
 
 
 
@@ -243,12 +244,13 @@ function tjurina_number(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any, <:MPol
   return tjurina_number(X, k)
 end
 
+
+
 ################################################################################
 
 #####                                 Order                                #####
 
 ################################################################################
-
 
 function _order(f::MPolyRingElem)
   !is_zero(f) || return PosInf()
@@ -282,7 +284,6 @@ function order_as_series(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any, <:MPo
   shift, _ = base_ring_shifts(parent(f))
   return _order(shift(numerator(f)))           
 end
-
 
 
 
@@ -334,7 +335,6 @@ function is_finitely_determined(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any
     return tjurina_number(f) != PosInf()
   end
 end
-
 
 
 
@@ -447,8 +447,6 @@ end
 
 
 
-
-
 @doc raw"""
     sharper_determinacy_bound(f::MPolyLocRingElem, equivalence::Symbol = :contact)
 
@@ -554,8 +552,8 @@ function _is_isomorphic_as_K_algebra(A::MPolyQuoLocRing{<:Field, <:Any, <:Any, <
   R == base_ring(B) || error("A and B must have the same base ring")  
   ## shift to origin   
   L, _ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))  
-  A,_ = quo(L, L(Oscar.shifted_ideal(modulus(A))))
-  B,_ = quo(L, L(Oscar.shifted_ideal(modulus(B))))   
+  A,_ = quo(L, L(shifted_ideal(modulus(A))))
+  B,_ = quo(L, L(shifted_ideal(modulus(B))))   
   ## check id isomorphism
   modulus(underlying_quotient(A)) != modulus(underlying_quotient(B)) || return true
   ## basic dimension checks
@@ -596,8 +594,8 @@ function _is_isomorphic_as_K_algebra(A::MPolyQuoLocRing{<:Field, <:Any, <:Any, <
   ## check if isomorphism exists
   S, t = polynomial_ring(coefficient_ring(R), ngens_m_k[1]*length(mB_basis), :t)
   P, iota = change_base_ring(S, R)    
-  I_A = Oscar.shifted_ideal(ideal(L, minimal_generating_set(modulus(A)))) 
-  I_B = ideal(standard_basis(Oscar.shifted_ideal(modulus(B)), ordering = negdeglex(R))) 
+  I_A = shifted_ideal(ideal(L, minimal_generating_set(modulus(A)))) 
+  I_B = ideal(standard_basis(shifted_ideal(modulus(B)), ordering = negdeglex(R))) 
   ## construct homomorphism with parameters
   phi = elem_type(P)[]  
   for i in 0:ngens_m_k[1]-1
@@ -671,8 +669,8 @@ function is_contact_equivalent(f::MPolyLocRingElem, g::MPolyLocRingElem)
   ## tjurina number is invariant under contact equivalence
   tjurina_number(f) == tjurina_number(g) || return false
   ## Switching to polynomial representatives and shifting to origin for computations w.r.t. local ordering
-  shift_f, _ = Oscar.base_ring_shifts(parent(f))
-  shift_g, _ = Oscar.base_ring_shifts(parent(g))
+  shift_f, _ = base_ring_shifts(parent(f))
+  shift_g, _ = base_ring_shifts(parent(g))
   L, _ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))
   f_poly = L(shift_f(numerator(f)))
   g_poly = L(shift_g(numerator(g)))
@@ -741,7 +739,6 @@ end
 
 
 
-
 ################################################################################
 
 #####                           Tjurina module                             #####
@@ -753,6 +750,11 @@ end
     tjurina_module(X::CompleteIntersectionGerm) 
 
 Return the Tjurina module of the complete intersection germ `(X,p)` at the point `p`.
+!!! note
+    For better readability and for saving memory the Tjurina module of the corresponding CompleteIntersectionGerm shifted to the origin '0' is actually computed and returned.
+!!! note
+    When dealing with with a Hypersurface use the type 'HypersurfaceGerm' and the function 'tjurina_algebra' to also receive the algebra structure of the Tjurina module.
+
 # Examples
 ```jldoctest
 julia> R, (x,y,z) = QQ["x","y","z"];
@@ -791,10 +793,11 @@ julia> vector_space_basis(T)
 ```
 """
 function tjurina_module(X::CompleteIntersectionGerm) 
-  I = defining_ideal(X)
-  k = ngens(I)
+  I = shifted_ideal(defining_ideal(X))
   R = base_ring(I)
-  M = free_module(R, k)
+  L,_ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))  
+  I = L(I)
+  M = free_module(L, ngens(I))
   J = jacobian_matrix(gens(I))
   S = sub(M,J)[1] + (I*M)[1]
   return quo(M, S)[1]
@@ -829,5 +832,104 @@ function tjurina_number(X::CompleteIntersectionGerm)
   d = vector_space_dimension(tjurina_module(X))
   return d == -1 ? PosInf() : d
 end
+
+
+
+function T1_module(X::SpaceGerm)
+  # shifting to 0
+  I = Oscar.shifted_ideal(defining_ideal(X))  
+  P_poly = base_ring(I)
+  n = ngens(P_poly)
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:n])) 
+  # presentation of I:     A
+  #                   P^p --> P^k --> I --> 0     #k is ngens(I)
+  # index:             1       0     -1    -2
+  Ipres = presentation(ideal_as_module(P(I)))
+  # Im(A^T) as R=P/I-module
+  R,_ = quo(P, P(I))
+  At = change_base_ring(R, transpose(matrix(map(Ipres,1))))
+  Im_At = image(At)
+  # presentation of Im(A^T): 
+  # index: 1       0        -1       -2
+  #                         R^p 
+  #            B1     A^T    U|     
+  #       R^r --> R^k --> Im(A^T) --> 0
+  #        ^       ^
+  #       l \____  | Df
+  #               R^n
+  Im_At_pres = presentation(Im_At)
+  B1 = map(Im_At_pres, 1) 
+  Df = hom(FreeMod(R,n), Im_At_pres[0], R.(jacobi_matrix(gens(P(I)))))
+
+  T1_as_SubQuo = quo(image(B1)[1], image(Df)[1])[1]   #abstract version from Matthias
+  # Now more explicit representation for versal family following Greuel, Lossen, Shustin
+  # Lift to finitly presented R-modul
+  T1_pres_as_RMod = presentation(T1_as_SubQuo)
+  M = lift.(matrix(map(T1_pres_as_RMod, 1)))
+  rel = image(M)
+  Pr = ambient_module(rel)
+  T1 = quo(Pr, (rel + (P(I)*Pr)[1]))[1]
+  ##### Wie weit Darstellung vereinfachen???
+  #T1_simpler = simplify(T1)[1]
+  #relations(T1_simpler)
+
+
+  return T1 #_simpler
+
+  ##Test
+  ###ab hier alt (löschen, wenn fertig)
+  T1_as_R_coker = present_as_cokernel(T1_as_SubQuo)
+end
+
+
+# Matthias Versions, aber vergessene Lokalisierung von mir hinzugefügt
+function manualT1(X::SpaceGerm)
+  I = Oscar.shifted_ideal(defining_ideal(X))
+  P_poly = base_ring(I)
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:ngens(P_poly)]))  
+  F1 = FreeMod(P, 1)
+  Imod, _ = sub(F1, [g*F1[1] for g in gens(I)])
+  PmodI, _ = quo(F1, Imod)
+  N, m = hom(Imod, PmodI)
+  Df = change_base_ring(P,jacobi_matrix(gens(I)))
+  F = ambient_free_module(N)
+  spanDf, _ = sub(F, Df)
+  T, map_from_normal_module = quo(N, ambient_representatives_generators(spanDf))
+  return T, map_from_normal_module, m
+end
+
+
+
+function tjurina_number(X::SpaceGerm)
+  d = vector_space_dimension(T1_module(X))
+  return d == -1 ? PosInf() : d
+end
+
+
+
+is_rigid(X::HypersurfaceGerm) = is_trivial(tjurina_algebra(X))
+is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
+is_rigid(X::SpaceGerm) = is_zero(T1_module(X)) 
+
+
+
+function T2_module(X::SpaceGerm)
+  I = Oscar.shifted_ideal(defining_ideal(X))  #k is ngens(I)
+  P_poly = base_ring(I)
+  n = ngens(P_poly)
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:n])) 
+  # presentation of I:     A
+  #                   P^p --> P^k --> I --> 0
+  # index:             1       0     -1    -2
+  Ipres = presentation(ideal_as_module(P(I)))
+  # Syz(I) = Im(A) as R=P/I-module
+  Syz = image(matrix(map(Ipres,1)))
+  #manually constructing the Koszulmodule since the entire Koszulcomplex is not needed
+  O_Cnk = ambient_module(Syz)
+  
+  [gen(I,i)*O_Cnk[j] - gen(I,j)*O_Cnk[i] for j in 1:rank(O_Cnk) for i in 1:j-1]
+  Kos = SubquoModule(OXk, [gen(I,i)*O_Cnk[j] - gen(I,j)*O_Cnk[i] for j in 1:rank(O_Cnk) for i in 1:j-1])
+end
+
 
 
