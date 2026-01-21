@@ -322,7 +322,7 @@ end
   IY = ideal(R, [x^2+y^3, y^3+z^2])
   Y = spec(quo(R, IY)[1])
   @test !is_rigid(CompleteIntersectionGerm(Y, [0, 0, 0]))
-  @test !is_rigid(CompleteIntersectionGerm(Y, [1, -1, 1]))
+  @test is_rigid(CompleteIntersectionGerm(Y, [1, -1, 1]))
   # for SpaceGerm
   IZ = ideal(R, [x*y, x*z, y*z])
   Z = spec(quo(R, IZ)[1])
