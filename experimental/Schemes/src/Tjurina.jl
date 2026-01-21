@@ -899,7 +899,29 @@ function manualT1(X::SpaceGerm)
 end
 
 
+@doc raw"""
+    tjurina_number(X::SpaceGerm)
 
+Return Tjurina number of the space germ `(X,p)` at the point `p`. 
+# Examples
+```jldoctest
+julia> R, (x,y,z) = QQ[:x,:y,:z];
+
+julia> I = ideal(R, [x*y, x*z, y*z]);
+
+julia> X = SpaceGerm(spec(R, I), [0,0,0])
+Spectrum
+  of localization
+    of quotient
+      of multivariate polynomial ring in 3 variables x, y, z
+        over rational field
+      by ideal (x*y, x*z, y*z)
+    at complement of maximal ideal of point (0, 0, 0)
+
+julia> tjurina_number(X)
+3
+```
+"""
 function tjurina_number(X::SpaceGerm)
   d = vector_space_dim(T1_module(X))
   return d == -1 ? PosInf() : d
