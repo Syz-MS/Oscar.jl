@@ -319,7 +319,7 @@ end
   IX2 = ideal(R, x+y^3+z^2)
   @test is_rigid(HypersurfaceGerm(spec(quo(R, IX2)[1]), [0, 0, 0]))
   # for CompleteIntersectionGerm
-  IY = ideal(R, [x^2+y^3, y^3+x^2])
+  IY = ideal(R, [x^2+y^3, y^3+z^2])
   Y = spec(quo(R, IY)[1])
   @test !is_rigid(CompleteIntersectionGerm(Y, [0, 0, 0]))
   @test !is_rigid(CompleteIntersectionGerm(Y, [1, -1, 1]))
