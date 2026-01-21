@@ -835,6 +835,21 @@ end
 
 
 
+################################################################################
+
+#####                             T^1 module                               #####
+
+################################################################################
+
+
+@doc raw"""
+    T1_module(X::SpaceGerm)
+
+Return $T^1_{X,p}$-module of infinitinfinitesimal deformations for the space germ `(X,p)` at the point `p`. 
+# Examples
+```jldoctest
+```
+"""
 function T1_module(X::SpaceGerm)
   # shifting to 0
   I = Oscar.shifted_ideal(defining_ideal(X))  
