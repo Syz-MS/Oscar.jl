@@ -234,14 +234,11 @@ not a free module, the user needs to specify a `base_ring_module` of ``M``.
 If ``M`` arises as a localization of some ``R``-module ``M'``, then 
 this connection is cached here. 
 """
-function base_ring_module(F::FreeMod{T}) where {T<:AbsLocalizedRingElem}
-  if !has_attribute(F, :base_ring_module) 
-    L = base_ring(F)
-    R = base_ring(L)
-    Fb = FreeMod(R, ngens(F))
-    set_attribute!(F, :base_ring_module, Fb)
-  end
-  return get_attribute(F, :base_ring_module)::base_ring_module_type(F)
+@attr base_ring_module_type(F) function base_ring_module(F::FreeMod{T}) where {T<:AbsLocalizedRingElem}
+  L = base_ring(F)
+  R = base_ring(L)
+  Fb = FreeMod(R, ngens(F))
+  return Fb
 end
 
 base_ring_module_type(::Type{FreeMod{T}}) where {T<:AbsLocalizedRingElem} = FreeMod{elem_type(base_ring_type(T))}
@@ -249,13 +246,10 @@ base_ring_module_type(F::FreeMod{T}) where {T<:AbsLocalizedRingElem} = base_ring
 
 # for a free module F ≅ Sʳ over a localized ring S = R[U⁻¹] this 
 # returns the canonical map F♭ ≅ Rʳ → Sʳ ≅ F.
-function base_ring_module_map(F::FreeMod{T}) where {T<:AbsLocalizedRingElem}
-  if !has_attribute(F, :base_ring_module_map) 
+@attr morphism_type(base_ring_module_type(F), typeof(F)) function base_ring_module_map(F::FreeMod{T}) where {T<:AbsLocalizedRingElem}
     Fb = base_ring_module(F)
     f = hom(Fb, F, gens(F))
-    set_attribute!(F, :base_ring_module_map, f)
-  end
-  return get_attribute(F, :base_ring_module_map)::morphism_type(base_ring_module_type(F), typeof(F))
+    return f
 end
 
 # For a SubquoModule M over a localized ring S = R[U⁻¹] this returns the SubquoModule N over R
@@ -263,7 +257,7 @@ end
 # been cached. 
 function pre_saturated_module(M::SubquoModule{T}) where {T<:AbsLocalizedRingElem}
   has_attribute(M, :saturated_module) && return get_attribute(M, :saturated_module)::SubquoModule{elem_type(base_ring_type(T))}
-  if !has_attribute(M, :pre_saturated_module)
+  return get_attribute!(M, :pre_saturated_module) do
     (A, D) = clear_denominators(generator_matrix(M))
     (B, E) = clear_denominators(relations_matrix(M))
     S = base_ring(M)
@@ -273,9 +267,8 @@ function pre_saturated_module(M::SubquoModule{T}) where {T<:AbsLocalizedRingElem
     Mb = SubquoModule(Fb, A, B)
     set_attribute!(M, :pre_saturation_data_gens, change_base_ring(S, D))
     set_attribute!(M, :pre_saturation_data_rels, change_base_ring(S, E))
-    set_attribute!(M, :pre_saturated_module, Mb)
-  end
-  return get_attribute(M, :pre_saturated_module)::SubquoModule{elem_type(base_ring_type(T))}
+    return Mb
+  end::SubquoModule{elem_type(base_ring_type(T))}
 end
 
 # For a SubquoModule M over a localized ring S = R[U⁻¹] and its current 
@@ -445,7 +438,8 @@ function cokernel(
     DomType<:FreeMod{T},
     CodType<:FreeMod{T}
   }
-  return quo(codomain(f), representing_matrix(f))
+  I, inc = image(f)
+  return quo(codomain(f), I)
 end
 
 function image(
@@ -455,7 +449,7 @@ function image(
     DomType<:FreeMod{T},
     CodType<:FreeMod{T}
   }
-  return sub(codomain(f), representing_matrix(f))
+  return sub(codomain(f), images_of_generators(f))
 end
 
 function coordinates(u::FreeModElem{T}, M::SubquoModule{T}) where {T<:AbsLocalizedRingElem}
@@ -622,17 +616,6 @@ function (F::FreeMod{T})(a::FreeModElem) where {T<:AbsLocalizedRingElem}
   rank(F) == rank(G) || error("modules does not have the same rank as the parent of the vector")
   c = Vector(a)
   return sum([a*e for (a, e) in zip(c, gens(F))])
-end
-
-function (M::SubquoModule{T})(f::FreeModElem; check::Bool = true) where {T<:AbsLocalizedRingElem}
-  F = ambient_free_module(M)
-  base_ring(parent(f)) == base_ring(base_ring(M)) && return M(F(f))
-  parent(f) == F || error("ambient free modules are not compatible")
-  (check && represents_element(f, M)) || error("not a representative of a module element")
-  v = coordinates(f, M) # This is not the cheapest way, but the only one for which 
-                        # the constructors in the module code are sufficiently generic.
-                        # Clean this up!
-  return sum([a*M[i] for (i, a) in v]; init=zero(M))
 end
 
 function base_ring_module(M::SubquoModule{T}) where {T<:AbsLocalizedRingElem}

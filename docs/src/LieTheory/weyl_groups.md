@@ -1,5 +1,6 @@
 ```@meta
 CurrentModule = Oscar
+CollapsedDocStrings = true
 DocTestSetup = Oscar.doctestsetup()
 ```
 
@@ -33,7 +34,6 @@ weyl_group(::Vector{Tuple{Symbol,Int}})
 ## Basic properties
 Basic group arithmetic like `*`, and `inv` are defined for `WeylGroupElem` objects.
 
-Using `(W::WeylGroup)(word::Vector{<:Integer})`, one can construct group elements from a word in the generators.
 Finite Weyl groups support iteration over all group elements (in an arbitrary order).
 
 ```@docs
@@ -44,10 +44,25 @@ gen(::WeylGroup, ::Int)
 gens(::WeylGroup)
 number_of_generators(::WeylGroup)
 order(::Type{T}, ::WeylGroup) where {T}
+is_finite_order(::WeylGroupElem)
+order(::Type{T}, ::WeylGroupElem) where {T}
 ```
 
 ```@docs
 root_system(::WeylGroup)
+```
+
+### Element constructors
+
+Using `(W::WeylGroup)(word::Vector{<:Integer})`, one can construct group elements from a word in the generators.
+
+```@docs; canonical=false
+gen(::WeylGroup, ::Int)
+gens(::WeylGroup)
+```
+
+```@docs
+reflection(::RootSpaceElem)
 ```
 
 ### Words and length
@@ -74,6 +89,11 @@ reduced_expressions(::WeylGroupElem)
 
 ```@docs
 *(::Union{RootSpaceElem,WeightLatticeElem}, ::WeylGroupElem)
+```
+
+```@docs
+geometric_representation(::WeylGroup)
+dual_geometric_representation(::WeylGroup)
 ```
 
 

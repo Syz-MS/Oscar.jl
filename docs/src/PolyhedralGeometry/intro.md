@@ -1,5 +1,6 @@
 ```@meta
 CurrentModule = Oscar
+CollapsedDocStrings = true
 DocTestSetup = Oscar.doctestsetup()
 ```
 
@@ -8,26 +9,27 @@ DocTestSetup = Oscar.doctestsetup()
 The polyhedral geometry part of OSCAR provides functionality for handling
 - convex polytopes, unbounded polyhedra and cones
 - polyhedral fans
-- linear programs
+- linear and mixed integer programs
 
 General textbooks offering details on theory and algorithms include:
 - [JT13](@cite)
+- [Sch86](@cite)
 - [Zie95](@cite)
+
+
+## Tutorials
+
+We encourage you to take a look at the tutorials on polyhedral geometry in
+OSCAR, which can be found [here](https://www.oscar-system.org/tutorials/PolyhedralGeometry/).
+
 
 ## Scalar types
 
 The objects from polyhedral geometry operate on a given type, which (usually) resembles a field. This is indicated by the template parameter, e.g. the properties of a `Polyhedron{QQFieldElem}` are rational numbers of type `QQFieldElem`, if applicable.
 Supported scalar types are `FieldElem` and `Float64`, but some functionality might not work properly if the parent `Field` does not satisfy certain mathematic conditions, like being ordered.
-When constructing a polyhedral object from scratch, for the "simpler" types `QQFieldElem` and `Float64` it suffices to pass the `Type`, but more complex `FieldElem`s require a parent `Field` object. This can be set by either passing the desired `Field` instead of the type, or by inserting the type and have a matching `FieldElem` in your input data. If no type or field is given, the scalar type defaults to `QQFieldElem`.
+When constructing a polyhedral object from scratch, for the "simpler" types `QQFieldElem` and `Float64` it suffices to pass the `Type`, but more complex `FieldElem`s require a parent `Field` object. This can be set by either passing the desired `Field` instead of the type, or by inserting the type and have a matching `FieldElem` in your input data. If no type or field is given, the scalar type will be deduced from the input data and defaults to `QQFieldElem` for primitive types like `Int64`.
 
-The parent `Field` of the coefficients of an object `O` with coefficients of type `T` can be retrieved with the `coefficient_field` function, and it holds `elem_type(coefficient_field(O)) == T`.
-
-```@docs
-coefficient_field(x::PolyhedralObject)
-```
-
-!!! warning
-    Support for fields other than the rational numbers is currently in an experimental stage.
+The parent `Field` of the coefficients of an object `O` with coefficients of type `T` can be retrieved with the [`coefficient_field`](@ref) function, and it holds `elem_type(coefficient_field(O)) == T`.
 
 These three lines result in the same polytope over rational numbers. Besides the general support mentioned above, naming a `Field` explicitly is encouraged because it allows user control and increases efficiency.
 ```jldoctest
@@ -39,7 +41,57 @@ true
 
 julia> P == convex_hull([1 0 0; 0 0 1]) # `Field` defaults to `QQ`
 true
+```
 
+Working with polytopes over algebraic number fields requires an embedded number field. This can be constructed with [`embedded_number_field`](@ref) from a polynomial and a choice for the root.
+
+```jldoctest
+julia> Qx, x = QQ[:x];
+
+julia> F,a = embedded_number_field(x^2-3//4, 0.866)
+(Embedded field
+Number field of degree 2 over QQ
+at
+Real embedding with 0.87 of number field, a)
+
+julia> triangle = convex_hull(F, [0 0; 1 0; 1//2 a])
+Polyhedron in ambient dimension 2 with EmbeddedAbsSimpleNumFieldElem type coefficients
+
+julia> volume(triangle)
+1//2*a (0.43)
+```
+
+The algebraic closure of the rational numbers also comes with an embedding.
+
+```jldoctest
+julia> K = algebraic_closure(QQ);
+
+julia> h = sqrt(K(3//4))
+{a2: 0.866025}
+
+julia> mat = matrix(K, [0 0; 1 0; 1//2 h])
+[    {a1: 0}       {a1: 0}]
+[ {a1: 1.00}       {a1: 0}]
+[{a1: 0.500}   {a2: 0.866}]
+
+julia> triangle = convex_hull(mat)
+Polyhedron in ambient dimension 2 with QQBarFieldElem type coefficients
+
+julia> volume(triangle)
+{a2: 0.433013}
+```
+
+```@docs
+coefficient_field(x::PolyhedralObject)
+embedded_number_field
+```
+
+If there is a corresponding conversion for the field elements, then polyhedra can
+be converted to a different field, e.g., a polytope over a number field can be
+converted to a polytope over the algebraic closure of the rationals.
+
+```@docs
+polyhedron(f::scalar_type_or_field, p::Polyhedron)
 ```
 
 ## Type compatibility
@@ -79,6 +131,14 @@ ray_vector
 
 While `RayVector`s can not be used do describe `PointVector`s (and vice versa),
 matrices are generally allowed.
+
+The primitive generator, also called minimal generator, of a ray can be
+accessed as follows:
+
+```@docs
+primitive_generator(r::AbstractVector{T}) where T<:RationalUnion
+primitive_generator_with_scaling_factor(r::AbstractVector{T}) where T<:RationalUnion
+```
 
 `AbstractCollection[PointVector]` can be given as:
 
@@ -181,7 +241,8 @@ fan for its construction, see [`polyhedral_fan`](@ref).
 Lower dimensional polyhedral objects can be visualized through polymake's backend.
 
 ```@docs
-visualize(P::Union{Polyhedron{<:Union{Float64,FieldElem}}, Cone{<:Union{Float64,FieldElem}}, PolyhedralFan{<:Union{Float64,FieldElem}}, PolyhedralComplex{<:Union{Float64,FieldElem}}, SubdivisionOfPoints{<:Union{Float64,FieldElem}}, Graph, SimplicialComplex}; kwargs...)
+visualize(P::Union{Polyhedron{<:Union{Float64,FieldElem}}, Cone{<:Union{Float64,FieldElem}}, PolyhedralFan{<:Union{Float64,FieldElem}}, PolyhedralComplex{<:Union{Float64,FieldElem}}, SubdivisionOfPoints{<:Union{Float64,FieldElem}}, SimplicialComplex}; backend::Symbol=:default, filename::Union{Nothing,String}=nothing, kwargs...)
+visualize(P::Vector; backend::Symbol=:default, filename::Union{Nothing,String}=nothing, kwargs...)
 ```
 
 

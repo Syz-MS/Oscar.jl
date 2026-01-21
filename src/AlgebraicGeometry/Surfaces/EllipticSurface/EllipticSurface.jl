@@ -250,7 +250,7 @@ Return sections ``P_1,\dots P_n`` of the generic fiber, such that together with
 the generators of the algebraic lattice ``A``, they generate
 ```math
 \frac{1}{p} A \cap N
-``` 
+```
 where ``N`` is the numerical lattice of ``X``.
 
 The algorithm proceeds by computing division points in the Mordell-Weil subgroup of `X`
@@ -890,6 +890,59 @@ algebraic lattice (with quadratic form rescaled by ``-1``).
   return mwl
 end
 
+function ample_class(::Type{QQMatrix}, X::EllipticSurface)
+  NS = algebraic_lattice(X)[3]
+  G = gram_matrix(ambient_space(NS))
+  t = length(trivial_lattice(X)[1])
+  n = rank(NS)
+  r = zero_matrix(QQ, 1, n)
+  r[1:1, 3:t] = matrix(QQ,1,t-2, ones(Int,t-2))*inv(G[3:t,3:t])
+  r = r*denominator(r)
+  # a nef and big class, pullback of an ample class of the weierstrass model
+  h = zero_matrix(QQ, 1, n)
+  h[1,1] = 3
+  h[1,2] = 1
+  v = 5*h + r
+  while (inner_product(ambient_space(NS), v, v)[1,1]<=0
+         || !isempty(short_vectors_iterator(orthogonal_submodule(NS, v), 2))
+         || length(separating_hyperplanes(NS, h, v, -2)) != 0
+        )
+    add!(v, h)
+  end
+  return v
+end 
+  
+  
+"""
+    is_nef(X::EllipticSurface, f::QQMatrix)
+    
+Return if `f` is nef. 
+  
+# Arguments
+- `f::QQMatrix` -- a vector given with respect to the ambient space of the algebraic lattice of ``X``
+"""
+function is_nef(X::EllipticSurface, f::QQMatrix)
+  # We do not need to know generators of the Mordell-Weil group for this.s
+  NS = algebraic_lattice(X)[3]
+  V = ambient_space(NS)
+  f_sq = inner_product(V, f, f)[1,1]
+  f_sq >= 0 || return false 
+  a = ample_class(QQMatrix, X) 
+  fa = inner_product(V, f, a)[1,1]
+  fa > 0 || return false  # not in the positive cone
+  if f_sq == 0 
+    # https://arxiv.org/abs/2210.01328
+    # Shimada: Mordell-Weil groups and automorphism groups of elliptic K3 surfaces
+    # Proposition 3.3 
+    af = a + fa*f
+  else 
+    af = f
+  end
+  return length(separating_hyperplanes(NS, a, af, -2))==0
+end
+
+is_nef(X::EllipticSurface, v::Vector{QQFieldElem}) = is_nef(X, matrix(QQ, 1, length(v), v))
+
 @doc raw"""
     mordell_weil_torsion(X::EllipticSurface) -> Vector{EllipticCurvePoint}
 
@@ -1033,36 +1086,34 @@ The keyword argument `reducible_singular_fibers_in_PP1` must be a list of vector
 the base field representing the points in projective space over which there are reducible fibers.
 Specify it to force this ordering of the basis vectors of the ambient space of the `algebraic_lattice`
 """
-function _trivial_lattice(X::EllipticSurface; reducible_singular_fibers_in_PP1=_reducible_fibers_disc(X))
+@attr Any function _trivial_lattice(X::EllipticSurface; reducible_singular_fibers_in_PP1=_reducible_fibers_disc(X))
   S = X
-  get_attribute!(S, :_trivial_lattice) do
-    O = zero_section(S)
-    pt0, F = fiber(S)
-    set_attribute!(components(O)[1], :_self_intersection, -euler_characteristic(S))
-    basisT = [F, O]
-    grams = [ZZ[0 1;1 -euler_characteristic(S)]]
-    sing = reducible_singular_fibers_in_PP1
-    f = [[pt, fiber_components(S,pt)] for  pt in sing]
-    fiber_componentsS = []
-    for (pt, ft) in f
-      @vprint :EllipticSurface 2 "normalizing fiber: over $pt \n"
-      Ft0 = standardize_fiber(S, ft)
-      @vprint :EllipticSurface 2 "$(Ft0[1]) \n"
-      append!(basisT , Ft0[3][2:end])
-      push!(grams,Ft0[4][2:end,2:end])
-      push!(fiber_componentsS, vcat([pt], collect(Ft0)))
-    end
-    G = block_diagonal_matrix(grams)
-    # make way for some more pretty printing
-    for (pt,root_type,_,comp) in fiber_componentsS
-      for (i,I) in enumerate(comp)
-        name = string(root_type[1], root_type[2])
-        set_attribute!(components(I)[1], :name, string("Component ", name, "_", i-1," of fiber over ", Tuple(pt)))
-        set_attribute!(components(I)[1], :_self_intersection, -2)
-      end
-    end
-    return basisT, G, fiber_componentsS
+  O = zero_section(S)
+  pt0, F = fiber(S)
+  set_attribute!(components(O)[1], :_self_intersection, -euler_characteristic(S))
+  basisT = [F, O]
+  grams = [ZZ[0 1;1 -euler_characteristic(S)]]
+  sing = reducible_singular_fibers_in_PP1
+  f = [[pt, fiber_components(S,pt)] for  pt in sing]
+  fiber_componentsS = []
+  for (pt, ft) in f
+    @vprint :EllipticSurface 2 "normalizing fiber: over $pt \n"
+    Ft0 = standardize_fiber(S, ft)
+    @vprint :EllipticSurface 2 "$(Ft0[1]) \n"
+    append!(basisT , Ft0[3][2:end])
+    push!(grams,Ft0[4][2:end,2:end])
+    push!(fiber_componentsS, vcat([pt], collect(Ft0)))
   end
+  G = block_diagonal_matrix(grams)
+  # make way for some more pretty printing
+  for (pt,root_type,_,comp) in fiber_componentsS
+    for (i,I) in enumerate(comp)
+      name = string(root_type[1], root_type[2])
+      set_attribute!(components(I)[1], :name, string("Component ", name, "_", i-1," of fiber over ", Tuple(pt)))
+      set_attribute!(components(I)[1], :_self_intersection, -2)
+    end
+  end
+  return basisT, G, fiber_componentsS
 end
 
 function _reducible_fibers_disc(X::EllipticSurface; sort::Bool=true)
@@ -1183,7 +1234,7 @@ function standardize_fiber(X::EllipticSurface, f::Vector{<:AbsWeilDivisor})
   b, I = _is_equal_up_to_permutation_with_permutation(G, -gram_matrix(R))
   @assert b
   gensF = vcat([f0], f[I])
-  Gext, v = extended_ade(rt[1],rt[2])
+  Gext, v = Hecke.extended_ade(rt[1],rt[2])
   Fdiv = sum(v[i]*gensF[i] for i in 1:length(gensF))
   return rt, Fdiv, gensF, Gext
 end

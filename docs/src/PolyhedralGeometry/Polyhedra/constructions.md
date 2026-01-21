@@ -1,5 +1,6 @@
 ```@meta
 CurrentModule = Oscar
+CollapsedDocStrings = true
 DocTestSetup = Oscar.doctestsetup()
 ```
 
@@ -190,6 +191,7 @@ rss_associahedron
 signed_permutahedron
 stable_set_polytope
 transportation_polytope
+tutte_lifting
 zonotope
 zonotope_vertices_fukuda_matrix
 ```

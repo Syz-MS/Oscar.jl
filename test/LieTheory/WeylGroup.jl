@@ -1,15 +1,21 @@
-import Oscar.AbstractAlgebra
-import Oscar.AbstractAlgebra: Group
-include(
-  joinpath(dirname(pathof(AbstractAlgebra)), "..", "test", "Groups-conformance-tests.jl")
-)
-
 @testset "LieTheory.WeylGroup" begin
   function is_in_normal_form(x::WeylGroupElem)
     return word(parent(x)(word(x))) == word(x)
   end
 
   @testset "constructors" begin
+    @testset "weyl_group(::Matrix{<:IntegerUnion})" begin
+      W = weyl_group([2 -1; -1 2]) # Matrix{Int}
+      @test ngens(W) == 2
+      @test order(W) == 6
+      @test isfinite(W) == true
+
+      W = weyl_group(ZZ.([2 -1; -1 2])) # Matrix{ZZRingElem}
+      @test ngens(W) == 2
+      @test order(W) == 6
+      @test isfinite(W) == true
+    end
+
     @testset "weyl_group(::ZZMatrix)" begin
       W = weyl_group(cartan_matrix(:A, 2))
       @test isfinite(W) == true
@@ -59,7 +65,32 @@ include(
     ("E6+C3", weyl_group([(:E, 6), (:C, 3)])),
     ("A_1^(1)", weyl_group(ZZ[2 -2; -2 2])), # TODO: replace with cartan_matrix(A_1^(1)), once functionality for affine type is added
     (
-      "complicated case 1",
+      "A_3^(1)",
+      begin
+        cm = cartan_matrix(:A, 4)
+        cm[1, 4] = -1
+        cm[4, 1] = -1
+        weyl_group(cm)
+      end,
+    ), # TODO: replace with cartan_matrix(A_3^(1)), once functionality for affine type is added
+    (
+      "F_4^(1)",
+      begin
+        cm = cartan_matrix(:A, 5)
+        cm[2:5, 2:5] = cartan_matrix(:F, 4)
+        weyl_group(cm)
+      end,
+    ), # TODO: replace with cartan_matrix(F_4^(1)), once functionality for affine type is added
+    ("A_2^(2)", weyl_group(ZZ[2 -4; -1 2])), # TODO: replace with cartan_matrix(A_2^(2)), once functionality for affine type is added
+    (
+      "D_4^(2)",
+      begin
+        cm = cartan_matrix(:B, 4)
+        cm[1, 2] = -2
+        weyl_group(cm)
+      end,
+    ), # TODO: replace with cartan_matrix(D_4^(2)), once functionality for affine type is added
+    ("complicated case 1",
       begin
         cm = cartan_matrix((:A, 3), (:C, 3), (:E, 6), (:G, 2))
         for _ in 1:50
@@ -87,9 +118,8 @@ include(
       end,
     ),
   ]
-    # TODO: make this work
-    # test_Group_interface(W)
-    # test_GroupElem_interface(rand(W, 2)...)
+    ConformanceTests.test_Group_interface(W)
+    ConformanceTests.test_GroupElem_interface(rand(W, 2)...)
   end
 
   @testset "<(x::WeylGroupElem, y::WeylGroupElem)" begin
@@ -196,31 +226,43 @@ include(
     W = weyl_group(:A, 2)
     w0 = longest_element(W)
     @test is_in_normal_form(w0)
-    @test word(w0) == UInt8[1, 2, 1]
+    a2_w0_word = UInt8[1, 2, 1]
+    @test word(w0) == a2_w0_word
+    @test letters(w0) == Int.(a2_w0_word)
+    @test syllables(w0) == [Int(i) => 1 for i in a2_w0_word]
 
     # B2
     W = weyl_group(:B, 2)
     w0 = longest_element(W)
     @test is_in_normal_form(w0)
-    @test word(w0) == UInt8[1, 2, 1, 2]
+    b2_w0_word = UInt8[1, 2, 1, 2]
+    @test word(w0) == b2_w0_word
+    @test letters(w0) == Int.(b2_w0_word)
+    @test syllables(w0) == [Int(i) => 1 for i in b2_w0_word]
 
     # B3
     W = weyl_group(:B, 3)
     w0 = longest_element(W)
     @test is_in_normal_form(w0)
     @test word(w0) == b3_w0
+    @test letters(w0) == Int.(b3_w0)
+    @test syllables(w0) == [Int(i) => 1 for i in b3_w0]
 
     # F4
     W = weyl_group(:F, 4)
     w0 = longest_element(W)
     @test is_in_normal_form(w0)
     @test word(w0) == f4_w0
+    @test letters(w0) == Int.(f4_w0)
+    @test syllables(w0) == [Int(i) => 1 for i in f4_w0]
 
     # G2
     W = weyl_group(:G, 2)
     w0 = longest_element(W)
     @test is_in_normal_form(w0)
     @test word(w0) == g2_w0
+    @test letters(w0) == Int.(g2_w0)
+    @test syllables(w0) == [Int(i) => 1 for i in g2_w0]
   end
 
   @testset "ngens(W::WeylGroup)" begin
@@ -347,6 +389,73 @@ include(
     x = W([1, 3, 5, 4, 2])
     @test parent(x) === x.parent
     @test parent(x) isa WeylGroup
+
+    x = W([3 => 1, 5 => 1])
+    @test parent(x) === x.parent
+    @test parent(x) isa WeylGroup
+  end
+
+  @testset "reflection" begin
+    for i in 2:4
+      R = root_system(:A, i)
+      for r in roots(R)
+        @test r * reflection(r) == -r
+      end
+    end
+
+    for i in 2:4
+      R = root_system(:B, i)
+      for r in roots(R)
+        @test r * reflection(r) == -r
+      end
+    end
+
+    for i in 2:4
+      R = root_system(:C, i)
+      for r in roots(R)
+        @test r * reflection(r) == -r
+      end
+    end
+
+    R = root_system(:D, 4)
+    for r in roots(R)
+      @test r * reflection(r) == -r
+    end
+
+    R = root_system(:E, 6)
+    for r in roots(R)
+      @test r * reflection(r) == -r
+    end
+
+    R = root_system(:E, 7)
+    for r in roots(R)
+      @test r * reflection(r) == -r
+    end
+
+    R = root_system(:E, 8)
+    for r in roots(R)
+      @test r * reflection(r) == -r
+    end
+
+    R = root_system(:F, 4)
+    for r in roots(R)
+      @test r * reflection(r) == -r
+    end
+
+    R = root_system(:G, 2)
+    for r in roots(R)
+      @test r * reflection(r) == -r
+    end
+
+    R = root_system([(:B, 2), (:A, 2)])
+    for r in roots(R)
+      @test r * reflection(r) == -r
+      for r2 in roots(R)
+        if is_zero(dot(r, r2)) #roots are orthogonal
+          @test r2 * reflection(r) == r2
+        end
+      end
+    end
   end
 
   @testset "ReducedExpressionIterator" begin
@@ -408,7 +517,7 @@ include(
       end
 
       @test !isnothing(findfirst(==((wt, inv(conj))), orb))
-      @test allunique(first.(orb))
+      @test allunique(first, orb)
       for (ow, x) in orb
         @test is_in_normal_form(x)
         @test ow * x == dom_wt
@@ -445,7 +554,7 @@ include(
       end
 
       @test !isnothing(findfirst(==((wt, inv(conj))), orb))
-      @test allunique(first.(orb))
+      @test allunique(first, orb)
       for (ow, x) in orb
         @test is_in_normal_form(x)
         @test ow * x == dom_wt
@@ -490,6 +599,25 @@ include(
 
       @test !isnothing(findfirst(==(wt), orb))
       @test allunique(orb)
+    end
+  end
+
+  @testset "(dual_)geometric_representation" begin
+    for W in [weyl_group(:B, 3), weyl_group(:E, 6), weyl_group(:G, 2)]
+      R = root_system(W)
+      G, hom = geometric_representation(W)
+      for _ in 1:5
+        x = rand(W)
+        a = RootSpaceElem(R, rand(-10:10, rank(R)))
+        @test coefficients(a) * hom(x) == coefficients(a * x)
+      end
+
+      G, hom = dual_geometric_representation(W)
+      for _ in 1:5
+        x = rand(W)
+        w = WeightLatticeElem(R, rand(-10:10, rank(R)))
+        @test coefficients(w) * hom(x) == coefficients(w * x)
+      end
     end
   end
 end

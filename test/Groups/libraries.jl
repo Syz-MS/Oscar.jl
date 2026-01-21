@@ -100,7 +100,7 @@ end
    @test perfect_group(120,1) isa PermGroup
    @test perfect_group(PermGroup,120,1) isa PermGroup
    @test perfect_group(FPGroup,120,1) isa FPGroup
-   @test_throws ArgumentError perfect_group(MatrixGroup,120,1)
+   @test_throws ArgumentError perfect_group(MatGroup,120,1)
 
    @test_throws ArgumentError perfect_group(17, 0)
    @test_throws ArgumentError perfect_group(17, 1)
@@ -133,8 +133,8 @@ end
    # all_perfect_groups with multiple order specifications
    @test all_perfect_groups(order => 1:5:200, order => 25:50) == all_perfect_groups(order => intersect(1:5:200, 25:50))
 
-   # lazy artifact loading (needs network access, see https://github.com/oscar-system/Oscar.jl/issues/2480)
-   #@test perfect_group(1376256, 1) isa PermGroup
+   # lazy artifact loading
+   @test perfect_group(1376256, 1) isa PermGroup
 end
 
 @testset "Small groups" begin
@@ -158,6 +158,7 @@ end
    @test length(all_small_groups(order => 16, !is_abelian))==9
    @test number_of_small_groups(16)==14
    @test number_of_small_groups(17)==1
+   @test small_group_identification(small_group(512, 1)) == (512, 1)
 
    @test_throws ArgumentError small_group(1, 2)
 end
@@ -178,7 +179,7 @@ end
 @testset "Atlas groups" begin
    # `atlas_group` for type and group name
    @test order(atlas_group(PermGroup, "A5")) == 60
-   @test order(atlas_group(MatrixGroup, "A5")) == 60
+   @test order(atlas_group(MatGroup, "A5")) == 60
    @test_throws ArgumentError atlas_group(PermGroup, "B")
 
    # prescribe permutation degree
@@ -257,7 +258,7 @@ end
    # `atlas_subgroup` for type, group name, and position
    H, emb = atlas_subgroup(PermGroup, "M11", 1)
    @test order(H) == 720
-   H, emb = atlas_subgroup(MatrixGroup, "M11", 1)
+   H, emb = atlas_subgroup(MatGroup, "M11", 1)
    @test order(H) == 720
    # no representation of the group
    @test_throws ArgumentError atlas_subgroup(PermGroup, "B", 1)
@@ -282,6 +283,12 @@ end
    @test length(info) > 0
    H, emb = atlas_subgroup(info[1], 1)
    @test order(H) == 720
+end
+
+@testset "Library of character tables" begin
+   l1 = all_character_table_names(is_atlas_character_table, !is_duplicate_table)
+   l2 = all_character_table_names(is_atlas_character_table)
+   @test l1 == l2
 end
 
 @testset "Groups with few conjugacy classes" begin

@@ -1,11 +1,19 @@
+# TODO: change Vector -> Set
 const EdgeLabels = Dict{Tuple{Int, Int}, Vector{WeylGroupElem}}
 
 function isless_lex(S1::Set{Set{Int}}, S2::Set{Set{Int}})
   S_diff = collect(symdiff(S1, S2))
   isempty(S_diff) && return false
   set_cmp(a, b) = min(symdiff(a, b)...) in a
-
   return sort(S_diff;lt=set_cmp)[1] in S1
+end
+
+function isless_lex(K1::SimplicialComplex, K2::SimplicialComplex)
+  return isless_lex(Set(facets(K1)), Set(facets(K2)))
+end
+
+function isless_lex(K1::UniformHypergraph, K2::UniformHypergraph)
+  return faces(K1) < faces(K2)
 end
 
 """
@@ -21,10 +29,10 @@ isless_lex(K1::ComplexOrHypergraph, K2::ComplexOrHypergraph) = isless_lex(Set(fa
 
 Given a field `F` find the vertices of the partial shift graph starting from `K`
 and discoverable from elements in `W`.
-Returns a `Vector{SimplicialCompplex}` ordered lexicographically.
+Return a `Vector{SimplicialCompplex}` ordered lexicographically.
 
 # Examples
-```jldoctest
+```jldoctest; filter = Main.Oscar.doctestfilter_hash_changes_in_1_13()
 julia> K = simplicial_complex([[1, 2], [2, 3], [3, 4]])
 Abstract simplicial complex of dimension 1 on 4 vertices
 
@@ -58,14 +66,14 @@ function partial_shift_graph_vertices(F::Field,
   # sorting here should also speed up unique according to julia docs
   unvisited = unique(
     x -> Set(facets(x)),
-    sort([exterior_shift(F, K, phi(w)) for w in W]; lt=isless_lex))[1:end - 1]
+    sort([exterior_shift(F, K, phi(w); las_vegas_trials=0) for w in W]; lt=isless_lex))[1:end - 1]
 
   while !isempty(unvisited)
     current = pop!(unvisited)
     push!(visited, current)
     shifts = unique(
       x -> Set(facets(x)),
-      sort([exterior_shift(F, current, phi(w)) for w in W]; lt=isless_lex))[1:end - 1]
+      sort([exterior_shift(F, current, phi(w); las_vegas_trials=0) for w in W]; lt=isless_lex))[1:end - 1]
 
     # dont visit things twice
     new_facets = filter(x -> !(x in Set.(facets.(visited))), Set.(facets.(shifts)))
@@ -96,7 +104,7 @@ function multi_edges(F::Field,
   (d1, d2) -> mergewith!(vcat, d1, d2), (
     Dict((i, complex_labels[Set(facets(delta))]) => [p])
     for (i, K) in complexes
-      for (p, delta) in ((p, exterior_shift(F, K, p)) for p in permutations)
+      for (p, delta) in ((p, exterior_shift(F, K, p; las_vegas_trials=0)) for p in permutations)
         if !issetequal(facets(delta), facets(K)));
     init=Dict{Tuple{Int, Int}, Vector{PermGroupElem}}()
   ) :: Dict{Tuple{Int, Int}, Vector{PermGroupElem}}
@@ -108,9 +116,9 @@ end
     partial_shift_graph(F::Field, complexes::Vector{Simplicialcomplex}, W::Union{WeylGroup, Vector{WeylGroupElem}}; parallel=false, show_progress=true)
     partial_shift_graph(F::Field, complexes::Vector{Uniformhypergraph}, W::Union{WeylGroup, Vector{WeylGroupElem}}; parallel=false, show_progress=true)
 
-Constructs the partial shift graph on `complexes`.
+Construct the partial shift graph on `complexes`.
 
-Returns a tuple `(G, EL, VL)`, where `G` is a `Graph{Directed}`, `EL` is a `Dict{Tuple{Int Int}, Vector{Weylgroupelem}` and
+Return a tuple `(G, EL, VL)`, where `G` is a `Graph{Directed}`, `EL` is a `Dict{Tuple{Int Int}, Vector{Weylgroupelem}` and
 `VL` is a lexicographically sorted `complexes`, hence is either a `Vector{SimplicialComplex}` or `Vector{Uniformhypergraph}`.
 `EL` are the edges labels and `VL` are the vertex labels.
 There is an edge from the vertex labelled `K` to the vertex labelled `L` if `L` is the partial shift of `K` by some `w` in `W`.
@@ -131,7 +139,7 @@ See [D-VJL24](@cite) for background.
 
 
 # Examples
-```jldoctest
+```jldoctest; filter = Main.Oscar.doctestfilter_hash_changes_in_1_13()
 julia> gamma(n,k,l) = uniform_hypergraph.(subsets(subsets(n, k), l), n)
 gamma (generic function with 1 method)
 
@@ -181,6 +189,7 @@ function partial_shift_graph(F::Field, complexes::Vector{T},
                              parallel::Bool = false,
                              show_progress::Bool = true,
                              task_size::Int=100) where T <: ComplexOrHypergraph
+  # see TODO above about changing EdgeLabels type
   # Deal with trivial case
   if length(complexes) == 1
     @req is_shifted(complexes[1]) "The list of complexes should be closed under shifting by elements of W"
@@ -189,7 +198,7 @@ function partial_shift_graph(F::Field, complexes::Vector{T},
       EdgeLabels(),
       complexes) :: Tuple{Graph{Directed}, EdgeLabels, Vector{T}}
   end
-  
+
   # maybe we provide a flag to skip if the complexes are already sorted?
   complexes = sort(complexes;lt=Oscar.isless_lex)
 
@@ -210,21 +219,25 @@ function partial_shift_graph(F::Field, complexes::Vector{T},
   map_function = map
   if parallel
     # setup parallel parameters
-    channels = Oscar.params_channels(Union{PermGroup, Vector{SimplicialComplex}, Vector{UniformHypergraph}})
+    # this should be updated to use the parallel framework at some point?
+    channels = [RemoteChannel(()->Channel{Any}(32), i) for i in workers()]
     # setup parents needed to be sent to each process
-    Oscar.put_params(channels, codomain(phi))
+    map(channel -> put_type_params(channel, codomain(phi)), channels)
     map_function = pmap
   end
-  try 
+  try
+    # here to so that this isn't applied on the worker
+    # since we cannot serialize Gap maps 
+    PG = phi.(W)
     if show_progress
       edge_labels = reduce((d1, d2) -> mergewith!(vcat, d1, d2),
                            @showprogress map_function(
-                             Ks -> multi_edges(F, phi.(W), Ks, complex_labels),
+                             Ks -> multi_edges(F, PG, Ks, complex_labels),
                              Iterators.partition(enumerate(complexes), task_size)))
     else
       edge_labels = reduce((d1, d2) -> mergewith!(vcat, d1, d2),
                            map_function(
-                             Ks -> multi_edges(F, phi.(W), Ks, complex_labels),
+                             Ks -> multi_edges(F, PG, Ks, complex_labels),
                              Iterators.partition(enumerate(complexes), task_size)))
     end
     graph = graph_from_edges(Directed, [[i,j] for (i,j) in keys(edge_labels)])
@@ -254,7 +267,7 @@ end
 @doc raw"""
     contracted_partial_shift_graph(G::Graph{Directed}, edge_labels::Dict{Tuple{Int, Int}, Vector{WeylGroupElem}})
 
-Returns a triple `(CG, S, P)`, where `CG` is a graph that contains a vertex `v` for every vertex `S[v]` in `G`.
+Return a triple `(CG, S, P)`, where `CG` is a graph that contains a vertex `v` for every vertex `S[v]` in `G`.
 `S` is a list of indices for the sinks in the original graph `G`.
 A vertex `i` is in `P[s]` if there exists an edge from `i` to `s` in `G` with `w0` in its edge label,
 in this way `P` is a partition of the vertices of the orignal graph `G`.
@@ -262,7 +275,7 @@ There is an edge from `s` to `t`  in `CG` whenever there is an edge from `i` to 
 See [D-VJL24](@cite) for background.
 
 # Examples
-```jldoctest
+```jldoctest; filter = Main.Oscar.doctestfilter_hash_changes_in_1_13()
 julia> gamma(n,k,l) = uniform_hypergraph.(subsets(subsets(n, k), l), n)
 gamma (generic function with 1 method)
 

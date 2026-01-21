@@ -30,7 +30,9 @@
     end
     @test rays(NFsquare) isa SubObjectIterator{RayVector{T}}
     @test length(rays(NFsquare)) == 4
-    @test issetequal(rays(NFsquare), ray_vector.(Ref(f), [[1, 0], [-1, 0], [0, 1], [0, -1]]))
+    @test issetequal(
+      rays(NFsquare), ray_vector.(Ref(f), [[1, 0], [-1, 0], [0, 1], [0, -1]])
+    )
     @test vector_matrix(rays(NFsquare)) == _oscar_matrix_from_property(f, rays(NFsquare))
     @test is_regular(NFsquare)
     @test is_complete(NFsquare)
@@ -62,7 +64,8 @@
     @test _check_im_perm_rows(incidence_matrix(cones(F1, 2)), incidence1)
     @test _check_im_perm_rows(cones(IncidenceMatrix, F1, 2), incidence1)
 
-    A3 = affine_space(NormalToricVariety, 3)
+    # Construct a fan that describes affine 3-space
+    A3 = polyhedral_fan(positive_hull(identity_matrix(ZZ, 3)))
     @test length(cones(A3, 1)) == 3
     @test length(cones(A3, 0)) == 1
     @test length(cones(A3, -1)) == 0
@@ -119,6 +122,56 @@
   end
 end
 
+@testset "minimal supercone" begin
+  # Construct a fan that describes affine 3-space
+  PF = polyhedral_fan(positive_hull(identity_matrix(ZZ, 3)))
+  @test issetequal(minimal_supercone_indices(PF, [1, 1, 1]), [1, 2, 3])
+  @test minimal_supercone_coordinates(PF, [1, 1, 1]) == [1, 1, 1]
+  @test issetequal(minimal_supercone_indices(PF, [1, 1, 0]), [1, 2])
+  @test minimal_supercone_coordinates(PF, [1, 1, 0]) == [1, 1, 0]
+  @test issetequal(minimal_supercone_indices(PF, [1, 0, 0]), [1])
+  @test minimal_supercone_coordinates(PF, [1, 0, 0]) == [1, 0, 0]
+  @test issetequal(minimal_supercone_indices(PF, [0, 0, 0]), Int64[])
+  @test minimal_supercone_coordinates(PF, [0, 0, 0]) == [0, 0, 0]
+  @test issetequal(minimal_supercone_indices(PF, [2//5, 3, 0]), [1, 2])
+  @test minimal_supercone_coordinates(PF, [2//5, 3, 0]) == [2//5, 3, 0]
+
+  # Construct a fan that describes projective 3-space
+  PF = normal_fan(Oscar.simplex(3))
+  @test issetequal(minimal_supercone_indices(PF, [1, 1, 1]), [1, 2, 3])
+  @test minimal_supercone_coordinates(PF, [1, 1, 1]) == [1, 1, 1, 0]
+  @test issetequal(minimal_supercone_indices(PF, [1, 1, 0]), [1, 2])
+  @test minimal_supercone_coordinates(PF, [1, 1, 0]) == [1, 1, 0, 0]
+  @test issetequal(minimal_supercone_indices(PF, [1, 0, 0]), [1])
+  @test minimal_supercone_coordinates(PF, [1, 0, 0]) == [1, 0, 0, 0]
+  @test issetequal(minimal_supercone_indices(PF, [0, 0, 0]), Int64[])
+  @test minimal_supercone_coordinates(PF, [0, 0, 0]) == [0, 0, 0, 0]
+  @test issetequal(minimal_supercone_indices(PF, [-1, 1, 1]), [2, 3, 4])
+  @test minimal_supercone_coordinates(PF, [-1, 1, 1]) == [0, 2, 2, 1]
+  @test issetequal(minimal_supercone_indices(PF, [-1, -1, 1]), [3, 4])
+  @test minimal_supercone_coordinates(PF, [-1, -1, 1]) == [0, 0, 2, 1]
+  @test issetequal(minimal_supercone_indices(PF, [-2//3, QQFieldElem(-4//3), 1]), [1, 3, 4])
+  @test minimal_supercone_coordinates(PF, [-2//3, -4//3, 1]) == [2//3, 0, 7//3, 4//3]
+
+  @test is_minimal_supercone_coordinate_vector(PF, [1, 1, 1, 0])
+  @test !is_minimal_supercone_coordinate_vector(PF, [1, 1, 1, 1])
+  @test !is_minimal_supercone_coordinate_vector(PF, [1, 1, -1, 0])
+
+  @test standard_coordinates(PF, [1, 2, 3, 0]) == [1, 2, 3]
+  @test standard_coordinates(PF, [1, 1, 0, 1]) == [0, 0, -1]
+  @test standard_coordinates(PF, [1, 0, 0, 1]) == [0, -1, -1]
+
+  # Construct a nonsimplicial fan
+  PF = face_fan(cube(3))
+  @test minimal_supercone_coordinates(PF, [1, 0, 0]) == [0, 0, 0, 1//2, 0, 1//2, 0, 0]
+
+  # Construct a fan of the 1/2(1, 1) singularity
+  ray_generators = [[2, -1], [0, 1]]
+  max_cones = IncidenceMatrix([[1, 2]])
+  PF = polyhedral_fan(max_cones, ray_generators)
+  @test minimal_supercone_coordinates(PF, [1, 0]) == [1//2, 1//2]
+end
+
 @testset "Transform{$T}" for (f, T) in _prepare_scalar_types()
   square = cube(f, 2)
   nf_square = normal_fan(square)
@@ -169,20 +222,31 @@ end
   @test number_of_maximal_cones(sff1) == 3
 end
 
+@testset "Transformations" for P in (cube(2), dodecahedron(), n_gon(5))
+  f = normal_fan(P)
+  fMinus = -f
+  @test n_rays(fMinus) == n_rays(f)
+  @test n_maximal_cones(fMinus) == n_maximal_cones(f)
+
+  fMinus = -1 * f
+  @test n_rays(fMinus) == n_rays(f)
+  @test n_maximal_cones(fMinus) == n_maximal_cones(f)
+end
+
 @testset "Defining polynomial of hyperplane arrangement from matrix" begin
-  A = identity_matrix(QQ,3)
+  A = identity_matrix(QQ, 3)
   L = arrangement_polynomial(A)
   x = gens(parent(L))
-  @test L  == x[1]*x[2]*x[3]
-  R,y = polynomial_ring(QQ,[:x, :y, :z])
+  @test L == x[1] * x[2] * x[3]
+  R, y = polynomial_ring(QQ, [:x, :y, :z])
   LL = arrangement_polynomial(R, A)
-  @test  LL == y[1]*y[2]*y[3]
+  @test LL == y[1] * y[2] * y[3]
   A = identity_matrix(QQ, 2)
   AA = identity_matrix(GF(3), 3)
   @test_throws ArgumentError arrangement_polynomial(R, A)
   @test_throws ArgumentError arrangement_polynomial(R, AA)
   A = matrix(QQ, [1 1 0])
-  Avv = [A[i,:] for i in 1:1]
+  Avv = [A[i, :] for i in 1:1]
   AM = Matrix(A)
   apAvv = arrangement_polynomial(Avv)
   RAvv = parent(apAvv)

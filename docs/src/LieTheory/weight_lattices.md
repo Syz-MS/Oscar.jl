@@ -1,5 +1,6 @@
 ```@meta
 CurrentModule = Oscar
+CollapsedDocStrings = true
 DocTestSetup = Oscar.doctestsetup()
 ```
 
@@ -68,6 +69,8 @@ is_fundamental_weight_with_index(::WeightLatticeElem)
 ```@docs
 reflect(::WeightLatticeElem, ::Int)
 reflect!(::WeightLatticeElem, ::Int)
+reflect(::WeightLatticeElem, ::RootSpaceElem)
+reflect!(::WeightLatticeElem, ::RootSpaceElem)
 ```
 
 ### Conjugate dominant weight

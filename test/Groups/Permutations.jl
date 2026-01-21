@@ -9,11 +9,7 @@
   @test p == cperm([1,5,2],[3,4])
   p = @perm ()
   @test p == cperm()
-  
-  @test_throws ArgumentError @perm (-1, 1)
-  @test_throws LoadError @eval @perm "bla"
-  @test_throws LoadError @eval @perm 1 + 1
-  
+    
   gens = @perm 14 [
          (1,10)
         (2,11)
@@ -37,11 +33,244 @@
   p[8] = cperm(G,[1,2,3,4,5,6,7],[8,9,10,11,12,13,14])
   p[9] = cperm(G,[1,2],[10,11])
   @test gens == p
-  
-  @test_throws ArgumentError @perm 10 [(1,11)]
-  
+    
   G = sub(G,gens)[1]
   @test order(G) == 645120
+end
+
+@testset "@perm" begin
+  @testset "@perm <...> cycles" begin
+    @testset "@perm cycles" begin
+      p = @perm (1,2,6)(4,5)
+      @test p isa PermGroupElem
+      G = parent(p)
+      @test degree(G) == 6
+      @test is_natural_symmetric_group(G)
+      @test order(p) == 6
+  
+      p = @perm ()
+      @test p isa PermGroupElem
+      G = parent(p)
+      @test degree(G) == 1
+      @test is_natural_symmetric_group(G)
+      @test order(p) == 1
+  
+      @test_throws ArgumentError @perm (-1,1)
+    end
+
+    @testset "@perm n cycles" begin
+      n = 7
+
+      p = @perm n (1,2,6)(4,5)
+      @test p isa PermGroupElem
+      G = parent(p)
+      @test degree(G) == n
+      @test is_natural_symmetric_group(G)
+      @test order(p) == 6
+
+      p = @perm n ()
+      @test p isa PermGroupElem
+      G = parent(p)
+      @test degree(G) == n
+      @test is_natural_symmetric_group(G)
+      @test order(p) == 1
+
+      @test_throws ArgumentError @perm 10 (1,11)
+      @test_throws ArgumentError @perm 5 (-1,1)
+    end
+
+    @testset "@perm G cycles" begin
+      S = symmetric_group(7)
+      p = @perm S (1,2,6)(4,5)
+      @test p isa PermGroupElem
+      @test parent(p) == S
+      @test order(p) == 6
+      p = @perm S ()
+      @test p isa PermGroupElem
+      @test parent(p) == S
+      @test order(p) == 1
+
+      @test_throws ArgumentError @perm S (-1,1)
+      @test_throws ArgumentError @perm S (2,5,8)
+
+      A = alternating_group(7)
+      p = @perm A (1,6)(4,5)
+      @test p isa PermGroupElem
+      @test parent(p) == A
+      @test order(p) == 2
+      p = @perm A ()
+      @test p isa PermGroupElem
+      @test parent(p) == A
+      @test order(p) == 1
+
+      # perms with negative sign
+      @test_throws ArgumentError @perm A (3,5) 
+      @test_throws ArgumentError @perm A (1,2,3,4) 
+      @test_throws ArgumentError @perm A (2,5)(4,1,3) 
+    end
+  end
+
+  @testset "@perm <...> vector" begin
+    let n = 7
+      S = symmetric_group(n)
+
+      @test_throws ArgumentError @macroexpand @perm []
+      @test_throws ArgumentError @macroexpand @perm n []
+      @test_throws ArgumentError @macroexpand @perm S []
+    end
+
+    @testset "@perm vector" begin
+      ps = @perm [(1,4)(2,3)(6,5)]
+      @test ps isa Vector{PermGroupElem}
+      G = parent(ps[1])
+      @test degree(G) == 6
+      @test is_natural_symmetric_group(G)
+      @test ps == [@perm(G, (1,4)(2,3)(6,5))]
+      
+      ps = @perm [(1,2,3)(4,5), (6,2,3,1), (), (2,)(1,4)]
+      @test ps isa Vector{PermGroupElem}
+      @test allequal(parent, ps)
+      G = parent(ps[1])
+      @test degree(G) == 6
+      @test is_natural_symmetric_group(G)
+      @test ps == [@perm(G, (1,2,3)(4,5)), @perm(G, (6,2,3,1)), @perm(G, ()), @perm(G, (2,)(1,4))]
+  
+      @test_throws ArgumentError @perm [(1,-2)]
+    end
+
+    @testset "@perm n vector" begin
+      n = 7
+      ps = @perm n [(1,4)(2,3)(6,5)]
+      @test ps isa Vector{PermGroupElem}
+      G = parent(ps[1])
+      @test degree(G) == n
+      @test is_natural_symmetric_group(G)
+      @test ps == [@perm(n, (1,4)(2,3)(6,5))]
+      
+      ps = @perm n [(1,2,3)(4,5), (6,2,3,1), (), (2,)(1,4)]
+      @test ps isa Vector{PermGroupElem}
+      @test allequal(parent, ps)
+      G = parent(ps[1])
+      @test degree(G) == n
+      @test is_natural_symmetric_group(G)
+      @test ps == [@perm(n, (1,2,3)(4,5)), @perm(n, (6,2,3,1)), @perm(n, ()), @perm(n, (2,)(1,4))]
+
+      @test_throws ArgumentError @perm 10 [(1,11)]
+      @test_throws ArgumentError @perm 5 [(1,-2)]
+    end
+
+    @testset "@perm G vector" begin
+      S = symmetric_group(7)
+      A = alternating_group(7)
+      
+      ps = @perm S [(1,4)(2,3)(6,5)]
+      @test ps isa Vector{PermGroupElem}
+      @test parent(ps[1]) == S
+      @test ps == [@perm(S, (1,4)(2,3)(6,5))]
+      
+      ps = @perm S [(1,2,3)(4,5), (6,2,3,1), (), (2,)(1,4)]
+      @test ps isa Vector{PermGroupElem}
+      @test all(p -> parent(p) == S, ps)
+      @test ps == [@perm(S, (1,2,3)(4,5)), @perm(S, (6,2,3,1)), @perm(S, ()), @perm(S, (2,)(1,4))]
+
+      @test_throws ArgumentError @perm S [(1,11)]
+      @test_throws ArgumentError @perm S [(1,-2)]
+
+      ps = @perm A [(1,4)(6,5)]
+      @test ps isa Vector{PermGroupElem}
+      @test parent(ps[1]) == A
+      @test ps == [@perm(A, (1,4)(6,5))]
+      
+      ps = @perm A [(1,2,3)(4,5,7), (6,2,3,1,5), (), (2,)(1,4,5)]
+      @test ps isa Vector{PermGroupElem}
+      @test all(p -> parent(p) == A, ps)
+      @test ps == [@perm(A, (1,2,3)(4,5,7)), @perm(A, (6,2,3,1,5)), @perm(A, ()), @perm(A, (2,)(1,4,5))]
+
+      @test_throws ArgumentError @perm A [(1,4)(2,3)(6,5)]
+    end
+  end
+
+  @testset "@perm <...> tuple" begin
+    # the empty tuple does not throw an error as it denotes the identity permutation
+    @testset "@perm tuple" begin
+      ps = @perm ((1,4)(2,3)(6,5),)
+      @test ps isa NTuple{1, PermGroupElem}
+      G = parent(ps[1])
+      @test degree(G) == 6
+      @test is_natural_symmetric_group(G)
+      @test ps == (@perm(G, (1,4)(2,3)(6,5)),)
+      
+      ps = @perm ((1,2,3)(4,5), (6,2,3,1), (), (2,)(1,4))
+      @test ps isa NTuple{4, PermGroupElem}
+      @test allequal(parent, ps)
+      G = parent(ps[1])
+      @test degree(G) == 6
+      @test is_natural_symmetric_group(G)
+      @test ps == (@perm(G, (1,2,3)(4,5)), @perm(G, (6,2,3,1)), @perm(G, ()), @perm(G, (2,)(1,4)))
+
+      @test_throws ArgumentError @perm ((1,-2),)
+    end
+
+    @testset "@perm n tuple" begin
+      n = 7
+
+      ps = @perm n ((1,4)(2,3)(6,5),)
+      @test ps isa NTuple{1, PermGroupElem}
+      G = parent(ps[1])
+      @test degree(G) == n
+      @test is_natural_symmetric_group(G)
+      @test ps == (@perm(n, (1,4)(2,3)(6,5)),)
+      
+      ps = @perm n ((1,2,3)(4,5), (6,2,3,1), (), (2,)(1,4))
+      @test ps isa NTuple{4, PermGroupElem}
+      @test allequal(parent, ps)
+      G = parent(ps[1])
+      @test degree(G) == n
+      @test is_natural_symmetric_group(G)
+      @test ps == (@perm(n, (1,2,3)(4,5)), @perm(n, (6,2,3,1)), @perm(n, ()), @perm(n, (2,)(1,4)))
+
+      @test_throws ArgumentError @perm 10 ((1,11),)
+      @test_throws ArgumentError @perm 5 ((1,-2),)
+    end
+
+    @testset "@perm G tuple" begin
+      S = symmetric_group(7)
+      A = alternating_group(7)
+
+      ps = @perm S ((1,4)(2,3)(6,5),)
+      @test ps isa NTuple{1, PermGroupElem}
+      @test parent(ps[1]) == S
+      @test ps == (@perm(S, (1,4)(2,3)(6,5)),)
+      
+      ps = @perm S ((1,2,3)(4,5), (6,2,3,1), (), (2,)(1,4))
+      @test ps isa NTuple{4, PermGroupElem}
+      @test all(p -> parent(p) == S, ps)
+      @test ps == (@perm(S, (1,2,3)(4,5)), @perm(S, (6,2,3,1)), @perm(S, ()), @perm(S, (2,)(1,4)))
+
+      @test_throws ArgumentError @perm S ((1,11),)
+      @test_throws ArgumentError @perm S ((1,-2),)
+
+      ps = @perm A ((1,4)(6,5),)
+      @test ps isa NTuple{1, PermGroupElem}
+      @test parent(ps[1]) == A
+      @test ps == (@perm(A, (1,4)(6,5)),)
+      
+      ps = @perm A ((1,2,3)(4,5,7), (6,2,3,5,1), (), (2,)(1,4,5))
+      @test ps isa NTuple{4, PermGroupElem}
+      @test all(p -> parent(p) == A, ps)
+      @test ps == (@perm(A, (1,2,3)(4,5,7)), @perm(A, (6,2,3,5,1)), @perm(A, ()), @perm(A, (2,)(1,4,5)))
+
+      @test_throws ArgumentError @perm A ((1,4)(2,3)(6,5),)
+    end
+  end
+
+
+  @test_throws MethodError @macroexpand @perm "bla"
+  @test_throws ErrorException @macroexpand @perm 1 + 1
+  @test_throws ErrorException @macroexpand [@perm (1,2), @perm (3,4), @perm (5,6)]
+  @test_throws ErrorException @macroexpand [@perm (1,2)(3,4), @perm (5,6)(7,8)]
+  @test_throws ErrorException @macroexpand p1, p2, p3 = @perm (1,2), @perm (3,4), @perm (5,6)
+  @test_throws ErrorException @macroexpand p1, p2 = @perm (1,2)(3,4), @perm (5,6)(7,8)
 end
 
 @testset "permutation_group" begin
@@ -71,6 +300,14 @@ end
 
   @test_throws ArgumentError @permutation_group(1, (1,2))
   @test_throws ArgumentError @permutation_group(1, (1,0))
+
+  n = 5
+  g = @permutation_group(6, (1,n))
+  @test degree(g) == 6
+  @test order(g) == 2
+  g = @permutation_group(n, (1,2,3,4))
+  @test degree(g) == n
+  @test order(g) == 4
 end
 
 @testset "parent coercion for permutation groups" begin
@@ -197,4 +434,40 @@ end
   G,_ = sub(symmetric_group(9), [c])
   H,iso = smaller_degree_permutation_representation(G)
   @test degree(H)<degree(G)
+end
+
+@testset "fixed_points tests" begin
+  # Setup permutation group
+  g = symmetric_group(4)
+  s = sylow_subgroup(g, 3)[1]        # a Sylow 3-subgroup (order 3)
+  e = one(g)                         # identity element
+  y = gen(g, 1)                      # an example element of g
+  x = gen(s, 1)                      # generator of Sylow subgroup
+
+  # Tests for fixed_points on individual elements
+  @test fixed_points(x) == [4]       # Sylow generator fixes only 4
+
+  @test fixed_points(e) == collect(1:degree(g))  # Identity fixes all
+
+  @test fixed_points(y) == [i for i in 1:degree(g) if y(i) == i]  # Check example element
+
+  z = g([2, 3, 1, 4])                # permutation (1 2 3)(4)
+  @test fixed_points(z) == [4]
+end
+
+@testset "number_of_fixed_points tests" begin
+  # Setup permutation group
+  g = symmetric_group(4)
+  s = sylow_subgroup(g, 3)[1]         # a Sylow 3-subgroup (order 3)
+  e = one(g)                          # identity element
+  y = gen(g, 1)
+  x = gen(s, 1)                       # generator of Sylow subgroup
+
+  # Tests for number_of_fixed_points on individual elements
+  @test number_of_fixed_points(x) == 1          # Sylow generator fixes only 4
+  @test number_of_fixed_points(e) == 4          # Identity fixes all points
+  @test number_of_fixed_points(y) == 0          # generator (1 2 3 4) fixes nothing
+
+  z = g([2, 3, 1, 4])                            # permutation (1 2 3)(4)
+  @test number_of_fixed_points(z) == 1 # only point 4 is fixed
 end

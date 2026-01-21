@@ -196,55 +196,81 @@ function Base.:-(w::WeightLatticeElem)
 end
 
 function zero!(w::WeightLatticeElem)
-  w.vec = zero!(w.vec)
-  return w
-end
-
-function add!(wr::WeightLatticeElem, w1::WeightLatticeElem, w2::WeightLatticeElem)
-  @req parent(wr) === parent(w1) === parent(w2) "parent mismatch"
-  wr.vec = add!(wr.vec, w1.vec, w2.vec)
-  return wr
+  return WeightLatticeElem(parent(w), zero!(w.vec))
 end
 
 function neg!(wr::WeightLatticeElem, w::WeightLatticeElem)
   @req parent(wr) === parent(w) "parent mismatch"
-  wr.vec = neg!(wr.vec, w.vec)
-  return wr
+  return WeightLatticeElem(parent(wr), neg!(wr.vec, w.vec))
+end
+
+function add!(wr::WeightLatticeElem, w1::WeightLatticeElem, w2::WeightLatticeElem)
+  @req parent(wr) === parent(w1) === parent(w2) "parent mismatch"
+  return WeightLatticeElem(parent(wr), add!(wr.vec, w1.vec, w2.vec))
 end
 
 function sub!(wr::WeightLatticeElem, w1::WeightLatticeElem, w2::WeightLatticeElem)
   @req parent(wr) === parent(w1) === parent(w2) "parent mismatch"
-  wr.vec = sub!(wr.vec, w1.vec, w2.vec)
-  return wr
+  return WeightLatticeElem(parent(wr), sub!(wr.vec, w1.vec, w2.vec))
 end
 
-function mul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnion)
+function mul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnionOrPtr)
   @req parent(wr) === parent(w) "parent mismatch"
-  wr.vec = mul!(wr.vec, w.vec, n)
-  return wr
+  return WeightLatticeElem(parent(wr), mul!(wr.vec, w.vec, n))
 end
 
-function mul!(wr::WeightLatticeElem, n::IntegerUnion, w::WeightLatticeElem)
+function mul!(wr::WeightLatticeElem, n::IntegerUnionOrPtr, w::WeightLatticeElem)
   @req parent(wr) === parent(w) "parent mismatch"
-  wr.vec = mul!(wr.vec, n, w.vec)
-  return wr
+  return WeightLatticeElem(parent(wr), mul!(wr.vec, n, w.vec))
 end
 
-function addmul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnion)
+function addmul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnionOrPtr)
   @req parent(wr) === parent(w) "parent mismatch"
-  wr.vec = addmul!(wr.vec, w.vec, n)
-  return wr
+  return WeightLatticeElem(parent(wr), addmul!(wr.vec, w.vec, n))
 end
 
-function addmul!(wr::WeightLatticeElem, n::IntegerUnion, w::WeightLatticeElem)
+function addmul!(wr::WeightLatticeElem, n::IntegerUnionOrPtr, w::WeightLatticeElem)
   @req parent(wr) === parent(w) "parent mismatch"
-  wr.vec = addmul!(wr.vec, n, w.vec)
-  return wr
+  return WeightLatticeElem(parent(wr), addmul!(wr.vec, n, w.vec))
 end
 
 # ignore temp storage
-addmul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnion, t) = addmul!(wr, w, n)
-addmul!(wr::WeightLatticeElem, n::IntegerUnion, w::WeightLatticeElem, t) = addmul!(wr, n, w)
+addmul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnionOrPtr, t) =
+  addmul!(wr, w, n)
+addmul!(wr::WeightLatticeElem, n::IntegerUnionOrPtr, w::WeightLatticeElem, t) =
+  addmul!(wr, n, w)
+
+function submul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnionOrPtr)
+  @req parent(wr) === parent(w) "parent mismatch"
+  return WeightLatticeElem(parent(wr), submul!(wr.vec, w.vec, n))
+end
+
+function submul!(wr::WeightLatticeElem, n::IntegerUnionOrPtr, w::WeightLatticeElem)
+  @req parent(wr) === parent(w) "parent mismatch"
+  return WeightLatticeElem(parent(wr), submul!(wr.vec, n, w.vec))
+end
+
+# ignore temp storage
+submul!(wr::WeightLatticeElem, w::WeightLatticeElem, n::IntegerUnionOrPtr, t) =
+  submul!(wr, w, n)
+submul!(wr::WeightLatticeElem, n::IntegerUnionOrPtr, w::WeightLatticeElem, t) =
+  submul!(wr, n, w)
+
+function mat_entry_ptr(w::WeightLatticeElem, i::Int)
+  return mat_entry_ptr(w.vec, 1, i)
+end
+
+function is_zero_entry(w::WeightLatticeElem, i::Int)
+  return is_zero_entry(w.vec, 1, i)
+end
+
+function is_positive_entry(w::WeightLatticeElem, i::Int)
+  return is_positive_entry(w.vec, 1, i)
+end
+
+function is_negative_entry(w::WeightLatticeElem, i::Int)
+  return is_negative_entry(w.vec, 1, i)
+end
 
 function Base.:(==)(w1::WeightLatticeElem, w2::WeightLatticeElem)
   return parent(w1) === parent(w2) && w1.vec == w2.vec
@@ -336,7 +362,7 @@ end
 @doc raw"""
     conjugate_dominant_weight_with_elem(w::WeightLatticeElem) -> Tuple{WeightLatticeElem, WeylGroupElem}
 
-Returns the unique dominant weight `dom` conjugate to `w` and a Weyl group element `x`
+Return the unique dominant weight `dom` conjugate to `w` and a Weyl group element `x`
 such that `w * x == dom`.
 """
 function conjugate_dominant_weight_with_elem(w::WeightLatticeElem)
@@ -426,11 +452,10 @@ See also: [`is_fundamental_weight(::WeightLatticeElem)`](@ref).
 """
 function is_fundamental_weight_with_index(w::WeightLatticeElem)
   ind = 0
-  coeffs = coefficients(w)
-  for i in 1:size(coeffs, 2)
-    if is_zero_entry(coeffs, 1, i)
+  for i in 1:rank(parent(w))
+    if is_zero_entry(w, i)
       continue
-    elseif is_one(coeffs[1, i])
+    elseif GC.@preserve w is_one(mat_entry_ptr(w, i))
       ind != 0 && return false, 0
       ind = i
     else
@@ -459,6 +484,36 @@ Reflect `w` in the hyperplane orthogonal to the `s`-th simple root, and return i
 This is a mutating version of [`reflect(::WeightLatticeElem, ::Int)`](@ref).
 """
 function reflect!(w::WeightLatticeElem, s::Int)
-  w.vec = addmul!(w.vec, view(cartan_matrix_tr(root_system(w)), s:s, :), -w.vec[s]) # change to submul! once available
+  # the scalar `w.vec[s]` needs to be implicitly copied as it otherwise gets mutated by `submul!`
+  return WeightLatticeElem(
+    parent(w), submul!(w.vec, view(cartan_matrix_tr(root_system(w)), s:s, :), w.vec[s])
+  )
+end
+
+@doc raw"""
+    reflect(w::WeightLatticeElem, beta::RootSpaceElem) -> RootSpaceElem
+  
+Return the reflection of `w` in the hyperplane orthogonal to root `beta`.
+
+See also: [`reflect!(::WeightLatticeElem, ::RootSpaceElem)`](@ref).
+"""
+function reflect(w::WeightLatticeElem, beta::RootSpaceElem)
+  return reflect!(deepcopy(w), beta)
+end
+
+@doc raw"""
+    reflect!(w::WeightLatticeElem, beta::RootSpaceElem) -> RootSpaceElem
+
+Reflect `w` in the hyperplane orthogonal to the root `beta`, and return it.
+
+This is a mutating version of [`reflect(::WeightLatticeElem, ::RootSpaceElem)`](@ref).
+"""
+function reflect!(w::WeightLatticeElem, beta::RootSpaceElem)
+  @req root_system(w) === root_system(beta) "Incompatible root systems"
+  for s in word(reflection(beta))
+    reflect!(w, Int(s))
+  end
   return w
 end
+
+ConformanceTests.equality(a::WeightLatticeElem, b::WeightLatticeElem) = a == b

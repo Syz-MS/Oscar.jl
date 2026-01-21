@@ -25,7 +25,7 @@ function _isomorphic_group_over_finite_field(matrices::Vector{<:MatrixElem{T}}; 
    G = matrix_group(Fq, n, matrices_Fq)
    N = order(G)
    if !is_divisible_by(Hecke._minkowski_multiple(K, n), N)
-      error("Group is not finite")
+      return false, nothing
    end
 
    G_to_fin_pres = GAPWrap.IsomorphismFpGroupByGenerators(G.X, GapObj(gens(G); recursive = true))
@@ -39,10 +39,10 @@ function _isomorphic_group_over_finite_field(matrices::Vector{<:MatrixElem{T}}; 
    for i = 1:length(rels)
       M = GAP.Globals.MappedWord(rels[i], GapObj(gens_and_invsF), GapObj(matrices_and_invs))
       if !isone(M)
-         error("Group is not finite")
+        return false, nothing
       end
    end
-   return G, G_to_fin_pres, F, OtoFq
+   return true, (G, G_to_fin_pres, F, OtoFq)
 end
 
 function good_reduction(matrices::Vector{<:MatrixElem{T}}, p::Int = 2) where T <: Union{ZZRingElem, QQFieldElem, AbsSimpleNumFieldElem}
@@ -63,7 +63,7 @@ function _reduce(M::MatrixElem{QQFieldElem}, Fp)
   return map_entries(Fp, M)
 end
 
-function _isomorphic_group_over_finite_field(G::MatrixGroup{T}; min_char::Int = 3) where T <: Union{ZZRingElem, QQFieldElem, AbsSimpleNumFieldElem}
+function _isomorphic_group_over_finite_field(G::MatGroup{T}; min_char::Int = 3) where T <: Union{ZZRingElem, QQFieldElem, AbsSimpleNumFieldElem}
 
   if is_empty(gens(G))
     F2 = GF(2)
@@ -80,7 +80,12 @@ function _isomorphic_group_over_finite_field(G::MatrixGroup{T}; min_char::Int = 
 
   matrices = map(matrix, gens(G))
 
-  Gp, GptoF, F, OtoFq = _isomorphic_group_over_finite_field(matrices, min_char = min_char)
+  flag, res = _isomorphic_group_over_finite_field(matrices, min_char = min_char)
+  if !flag
+    set_is_finite(G, false)
+    throw(InfiniteOrderError(G))
+  end
+  Gp, GptoF, F, OtoFq = res
 
   img = function(x)
     return Gp(_reduce(matrix(x), OtoFq))
@@ -88,19 +93,43 @@ function _isomorphic_group_over_finite_field(G::MatrixGroup{T}; min_char::Int = 
 
   gen = gens(G)
 
-  preimg = function(y)
-    return GAP.Globals.MappedWord(GAPWrap.UnderlyingElement(GAPWrap.Image(GptoF, map_entries(_ring_iso(Gp), matrix(y)))),
+  preimg_bare = function(y)
+    return GAP.Globals.MappedWord(GAPWrap.UnderlyingElement(GAPWrap.Image(GptoF, y)),
                                   GAPWrap.FreeGeneratorsOfFpGroup(F),
                                   GapObj(gen))
   end
 
-  return Gp, MapFromFunc(G, Gp, img, preimg)
+  preimg = y -> preimg_bare(map_entries(_ring_iso(Gp), matrix(y)))
+
+  has_order(Gp) && set_order(G, order(Gp))
+
+  mp = MapFromFunc(G, Gp, img, preimg)
+
+  # try to improve `GapObj(G)`
+  Gap_G = GapObj(G)
+  Gap_Gp = GapObj(Gp)
+  if !GAP.Globals.HasNiceMonomorphism(Gap_G)
+    risoG = _ring_iso(G)
+    risoGp = _ring_iso(Gp)
+
+    # map from Gap_G to Gap_Gp
+    fun = x -> map_entries(risoGp, _reduce(preimage_matrix(risoG, x), OtoFq))
+
+    # map from Gap_Gp to Gap_G
+    invfun = x -> GapObj(preimg_bare(x))
+
+    Gap_mp = GAP.Globals.GroupHomomorphismByFunction(Gap_G, Gap_Gp, fun, invfun)
+    GAP.Globals.SetNiceMonomorphism(Gap_G, Gap_mp)
+    GAP.Globals.SetIsHandledByNiceMonomorphism(Gap_G, true)
+  end
+
+  return Gp, mp
 end
 
-function isomorphic_group_over_finite_field(G::MatrixGroup{T}; min_char::Int = 3) where T <: Union{ZZRingElem, QQFieldElem, AbsSimpleNumFieldElem}
+function isomorphic_group_over_finite_field(G::MatGroup{T}; min_char::Int = 3) where T <: Union{ZZRingElem, QQFieldElem, AbsSimpleNumFieldElem}
   val = get_attribute!(G, :isomorphic_group_over_fq) do
     return _isomorphic_group_over_finite_field(G, min_char = min_char)
-  end::Tuple{MatrixGroup, MapFromFunc}
+  end::Tuple{MatGroup, MapFromFunc}
   if characteristic(base_ring(val[1])) >= min_char
     return val
   else
@@ -158,7 +187,7 @@ function test_modulus(matrices::Vector{T}, p::Int) where T <: MatrixElem{AbsSimp
    if p == 2
       return false, GF(p, cached = false), matrices_Fq, Hecke.NfOrdToFqMor()
    end
-   O = EquationOrder(K)
+   O = equation_order(K)
    if mod(discriminant(O), p) == 0
       return false, GF(p, cached = false), matrices_Fq, Hecke.NfOrdToFqMor()
    end

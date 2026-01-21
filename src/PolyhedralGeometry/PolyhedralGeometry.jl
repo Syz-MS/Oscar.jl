@@ -1,4 +1,4 @@
-const AnyVecOrMat = Union{MatElem,AbstractVecOrMat}
+const AnyVecOrMat = Union{MatElem,SMat,AbstractVecOrMat}
 
 include("helpers.jl")
 include("iterators.jl")
@@ -17,9 +17,9 @@ include("PolyhedralComplex/standard_constructions.jl")
 include("SubdivisionOfPoints/constructors.jl")
 include("SubdivisionOfPoints/properties.jl")
 include("SubdivisionOfPoints/functions.jl")
-include("linear_program.jl")
-include("mixed_integer_linear_program.jl")
-include("LP_file_format.jl")
+include("Optimization/linear_program.jl")
+include("Optimization/mixed_integer_linear_program.jl")
+include("Optimization/LP_file_format.jl")
 include("groups.jl")
 include("type_functions.jl")
 include("solving_integrally.jl")

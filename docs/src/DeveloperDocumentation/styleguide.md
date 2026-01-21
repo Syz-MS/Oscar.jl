@@ -1,3 +1,9 @@
+```@meta
+CurrentModule = Oscar
+CollapsedDocStrings = true
+DocTestSetup = Oscar.doctestsetup()
+```
+
 # Developer Style Guide
 
 In general we aim to follow the [Julia Style Guide](https://docs.julialang.org/en/v1/manual/style-guide/)
@@ -110,12 +116,32 @@ file, see <https://editorconfig.org> for more information about this.
 
 ### JuliaFormatter
 
-There is a `.JuliaFormatter.toml` in our git repository. To format your files,
-first add `JuliaFormatter.jl` in Julia and then use
+To ensure consistent formatting, we employ the package `JuliaFormatter.jl`. The
+`.JuliaFormatter.toml` file in the repository defines the desired formatting style.
+
+To format your files, first add version 1 of the `JuliaFormatter.jl` package in Julia.
+```julia
+Pkg.add(name="JuliaFormatter", version="1")
 ```
+You can then format individual files via:
+```julia
 using JuliaFormatter
 format_file("path/to/file/file.jl")
 ```
+To format an entire folder (recursively), use `format("path/to/folder")`. Note
+that both `format` and `format_file` return a `Bool`; you may need to repeat the
+command until it returns `true`. This is a known shortcoming of the current
+`JuliaFormatter` package.
+
+Ultimately, we aim to use the workflow provided by
+[julia-actions/julia-format](https://github.com/julia-actions/julia-format). Instead of
+performing a single large reformatting of the entire OSCAR code base, we are extending
+coverage incrementally. A custom CI job ensures that already-compliant parts of OSCAR
+remain consistent with the defined style. Whenever the scope of this CI is extended -
+for example, to verify that code in a new experimental module meets our formatting
+requirements - special care must be taken. Details on how to extend the scope of this
+CI mechanism are described in `etc/format_code.jl`. All other formatting changes can be
+handled like regular commits.
 
 ### Unicode
 
@@ -165,6 +191,35 @@ end
 ```
 
 ## Code structure
+
+- use logical operations (`&&`/`||`) instead of bitwise operations (`&`/`|`) for conditional statements
+  ```julia
+  if f(x) == 1 && g(y) >= 2
+      bla
+  end
+  ```
+  instead of
+  ```julia
+  if (f(x) == 1) & (g(y) >= 2)
+      bla
+  end
+  ```
+
+- use short-circuiting only for control flow
+  ```julia
+  for i in 1:10
+      fl = ...
+      fl && continue
+  end
+  ```
+  or
+  ```julia
+  fl && return bla
+  ```
+  is fine. The following is not:
+  ```julia
+  fl && (x = false) || (y = f(1, x))
+  ```
 
 - do not nest loops and `if` clauses too deeply; if you are using 5 or more
   levels, then in general that's a hint that you should refactor; e.g.
@@ -292,82 +347,19 @@ matrix `A`, write `Oscar.parent(A)`.
    preferred way to denote the mathematical symbols in the docstrings.
 
 
-## Printing in Oscar
-
-### The 2 + 1 print modes of Oscar
-Oscar has two user print modes `detailed` and `one line` and one internal
-print mode `terse`. The latter is for use during recursion,
-e.g. to print the `base_ring(X)` when in `one line` mode.
-It exists to make sure that `one line` stays compact and human readable.
-
-Top-level REPL printing of an object will use `detailed` mode by default
-```julia
-julia> X
-detailed
-```
-Inside nested structures, e.g. inside a `Vector`, the `one line` mode is used.
-```julia
-julia> [X,X]
-3-element Vector{TypeofX{T}}
-one line
-one line
-one line
-```
-
-##### An Example for the 2 + 1 print modes
-```
-# detailed
-General linear group of degree 24
-  over Finite field of degree 7 over GF(29)
-
-# one line
-General linear group of degree 24 over GF(29^7)
-
-# terse
-General linear group
-```
-
-The print modes are specified as follows
-#### Detailed printing
-- the output must make sense as a standalone without context to non-specialists
-- the number of output lines should fit in the terminal
-- if the object is simple enough use only one line
-- use indentation and (usually) `one line` to print substructures
-#### One line printing
-- the output must print in one line
-- should make sense as a standalone without context
-- variable names/generators/relations should not be printed only their number.
-- Only the first word is capitalized e.g. `Polynomial ring`
-- one should use `terse` for nested printing in compact
-- nested calls to `one line` (if you think them really necessary) should be at the end,
-  so that one can read sequentially. Calls to `terse` can be anywhere.
-- commas must be enclosed in brackets so that printing tuples stays unambiguous
-#### Terse printing
-- a user readable version of the main (mathematical) type.
-- a single term or a symbol/letter mimicking mathematical notation
-- should usually only depend on the type and not of the type parameters or of
-  the concrete instance - exceptions of this rule are possible e.g. for `GF(2)`
-- no nested printing. In particular variable names and `base_ring` must not be displayed.
-  This ensures that `one line` and `terse` stay compact even for complicated things.
-  If you want nested printing use `one line` or `detailed`.
-
-For further information and examples we refer you to our section [Details on
-printing in Oscar](@ref).
-
-
 ## Deprecating functions
 
 Sometimes it is necessary to rename a function or otherwise change it. To allow
 for backwards compatibility, please then introduce a new line in the file
 `src/deprecations.jl`. If the interface did not change, it is enough to write:
-```
+```julia
 # Deprecated after CURRENT_RELEASE_VERSION
 @deprecate old_function new_function
 ```
 It is possible to transform the arguments too, if the syntax has changed. If this
 process needs an auxiliary function, which otherwise is unnecessary, please add
 it above:
-```
+```julia
 # Deprecated after CURRENT_RELEASE_VERSION
 function transform_args_for_new_function(args)
     # Do something
@@ -377,7 +369,7 @@ end
 ```
 In simple cases (like changing the order of arguments), you don't need an
 auxiliary function:
-```
+```julia
 @deprecate old_function(arg1::Type1, arg2::Type2) new_function(arg2, arg1)
 ```
 
@@ -386,7 +378,7 @@ adding to `deprecations.jl` after a release, otherwise please add to the
 existing block.
 
 If you renamed a type and want to deprecate the old one, please add a line like
-```
+```julia
 Base.@deprecate_type OldType NewType
 ```
 This makes it still possible to use OldType in signatures and type annotations,

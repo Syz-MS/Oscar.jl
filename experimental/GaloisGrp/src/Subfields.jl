@@ -5,6 +5,10 @@ using Oscar.GaloisGrp
 import Oscar.GaloisGrp: POSet, POSetElem, GaloisCtx, find_prime,
                         primitive_by_shape, bound_to_precision
 
+if isdefined(Oscar, :subfield)
+  import Oscar: subfield
+end
+
 
 function embedding_hom(k, K)
   return MapFromFunc(k, K, K)
@@ -37,8 +41,8 @@ mutable struct SubfieldLattice{T}
                   (x,y) -> issubset(x[1], y[1]) - issubset(y[1], x[1]))
 
     r.l = Dict(POSetElem(r.P, 1) =>(K, id_hom(K)),
-               POSetElem(r.P, 2) => (base_ring(K),
-                           embedding_hom(base_ring(K), K)))
+               POSetElem(r.P, 2) => (base_field(K),
+                           embedding_hom(base_field(K), K)))
     return r
   end
 end
@@ -68,7 +72,6 @@ function block_system(G::GaloisCtx, a::SimpleNumFieldElem)
     r = roots(G, pr, raw = true)
     c = map(f, r) # TODO: use the embedding map!
     bs = Hecke.MPolyFact.block_system(c)
-
     if all(x->length(x) == length(bs[1]), bs)
       sort!(bs)
       return bs
@@ -102,6 +105,12 @@ function ==(A::SubfieldLatticeElem, B::SubfieldLatticeElem)
   bs = A.b
   cs = B.b
   return P.can_cmp(bs, cs) && P.cmp(bs, cs) == 0
+end
+
+# very weak, but correct hash
+function Base.hash(A::SubfieldLatticeElem, h::UInt)
+  h = hash(parent(A).K, h)
+  return h
 end
 
 function Base.:*(A::SubfieldLatticeElem, B::SubfieldLatticeElem)
@@ -185,7 +194,7 @@ For a (potential) block system `bs` either find the corresponding subfield,
 thus proving the block system to be valid, or return `nothing` showing the
 block system to be wrong.
 """
-function subfield(S::SubfieldLattice, bs::BlockSystem_t)
+function Oscar.subfield(S::SubfieldLattice, bs::BlockSystem_t)
   if bs in S.P && haskey(S.l, S.P(bs))
     #this catches [[1,2], ...] [[1,2], ...] only one of them can be
     #valid. However, the poset is only comparing the 1st block...
@@ -239,10 +248,7 @@ function subfield(S::SubfieldLattice, bs::BlockSystem_t)
   pow = copy(beta)
 
   K = field(S)
-  k = base_ring(K)
-  if !isa(k, AbstractAlgebra.Field)
-    k = QQ
-  end
+  k = base_field(K)
   fl, v = isinteger(G, B, sum(beta))
   fl || return nothing
   tr = [k(v)]
@@ -287,7 +293,7 @@ function subfield(S::SubfieldLattice, bs::BlockSystem_t)
   return nothing
 end
 
-function subfield(S::SubfieldLatticeElem)
+function Oscar.subfield(S::SubfieldLatticeElem)
   return subfield(parent(S), S.b)
 end
 
@@ -330,7 +336,7 @@ function _subfields(K::AbsSimpleNumField; pStart = 2*degree(K)+1, prime = 0)
   f = divexact(f, content(f))
 
   p, ct = find_prime(Hecke.Globals.Qx(f), pStart = pStart, prime = prime,
-                                          filter_pattern = x->any(t->degree(t) == 1, keys(x.fac)))
+                                          filter_pattern = x->any(t->degree(t) == 1, first.(collect(x))))
   n = degree(K)
   if primitive_by_shape(ct, n)
     return nothing
@@ -483,9 +489,9 @@ function subfield_lattice(K::AbsSimpleNumField)
   return _subfields(K)
 end
 
-export subfield, subfield_lattice
+export subfield_lattice
 
 end #module
 
 using .SubfieldLattice_Module
-export subfield, subfield_lattice
+export subfield_lattice

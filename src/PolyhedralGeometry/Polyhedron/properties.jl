@@ -706,6 +706,48 @@ normalized_volume(P::Polyhedron) =
   coefficient_field(P)(factorial(dim(P)) * (pm_object(P)).VOLUME)
 
 @doc raw"""
+    castelnuovo_excess(P::Polyhedron)
+
+For an arbitrary lattice polytope, Hibi [Hib94](@cite) proved that the normalized volume is always at least as large as a certain lattice point count.
+This function returns the difference between those two numbers.
+
+# Examples
+```jldoctest
+julia> castelnuovo_excess(cube(4))
+154
+```
+"""
+function castelnuovo_excess(P::Polyhedron)
+  _assert_lattice(P)
+  d = dim(P)
+  l = ZZ(pm_object(P).N_LATTICE_POINTS)::ZZRingElem
+  c = ZZ(pm_object(P).N_INTERIOR_LATTICE_POINTS)::ZZRingElem
+  b = l - c
+  e = (d * c + (d - 1) * b - d^2 + 2)
+  # the normalized volume is an integer as P is lattice
+  return numerator(normalized_volume(P)) - e
+end
+
+@doc raw"""
+    is_castelnuovo(P::Polyhedron)
+
+For an arbitrary lattice polytope, Hibi [Hib94](@cite) proved that the normalized volume is always at least as large as a certain lattice point count.
+This function returns true if both numbers agree.
+
+# Examples
+```jldoctest
+julia> is_castelnuovo(cube(2))
+true
+
+julia> is_castelnuovo(cube(4))
+false
+```
+"""
+function is_castelnuovo(P::Polyhedron)
+  return castelnuovo_excess(P) == 0
+end
+
+@doc raw"""
     dim(P::Polyhedron)
 
 Return the dimension of `P`.
@@ -749,8 +791,8 @@ julia> matrix(ZZ, lattice_points(S))
 [2   0]
 ```
 """
-function lattice_points(P::Polyhedron)
-  @req pm_object(P).BOUNDED "Polyhedron not bounded"
+function lattice_points(P::Polyhedron; check::Bool=true)
+  @check is_bounded(P) "Polyhedron not bounded"
   return SubObjectIterator{PointVector{ZZRingElem}}(
     P, _lattice_point, size(pm_object(P).LATTICE_POINTS_GENERATORS[1], 1)
   )
@@ -785,7 +827,7 @@ julia> matrix(ZZ, interior_lattice_points(c))
 ```
 """
 function interior_lattice_points(P::Polyhedron)
-  @req pm_object(P).BOUNDED "Polyhedron not bounded"
+  @req is_bounded(P) "Polyhedron not bounded"
   return SubObjectIterator{PointVector{ZZRingElem}}(
     P, _interior_lattice_point, size(pm_object(P).INTERIOR_LATTICE_POINTS, 1)
   )
@@ -834,7 +876,7 @@ julia> matrix(ZZ, boundary_lattice_points(c))
 ```
 """
 function boundary_lattice_points(P::Polyhedron)
-  @req pm_object(P).BOUNDED "Polyhedron not bounded"
+  @req is_bounded(P) "Polyhedron not bounded"
   return SubObjectIterator{PointVector{ZZRingElem}}(
     P, _boundary_lattice_point, size(pm_object(P).BOUNDARY_LATTICE_POINTS, 1)
   )
@@ -1288,7 +1330,7 @@ is_bounded(P::Polyhedron) = pm_object(P).BOUNDED::Bool
 @doc raw"""
     is_simple(P::Polyhedron)
 
-Check whether `P` is simple.
+Check whether `P` is simple, i.e., each vertex figure is a simplex.
 
 # Examples
 ```jldoctest
@@ -1304,9 +1346,45 @@ is_simple(P::Polyhedron) = pm_object(P).SIMPLE::Bool
 @doc raw"""
     is_simplicial(P::Polyhedron)
 
-Check whether `P` is simplicial.
+Check whether `P` is simplicial, i.e., each proper face is a simplex.
 """
 is_simplicial(P::Polyhedron) = pm_object(P).SIMPLICIAL::Bool
+
+@doc raw"""
+    is_neighborly(P::Polyhedron)
+
+Check whether `P` is neighborly, i.e., if the dimension is $d$, each $\lfloor d/2 \rfloor$-subset of the vertices forms a face.
+Neighborly polytopes in even dimension are necessarily simplicial.
+
+# Examples
+
+A 4-polytope is neighborly if and only if the vertex-edge graph is complete.
+
+```jldoctest
+julia> is_neighborly(cyclic_polytope(4,8))
+true
+```
+"""
+is_neighborly(P::Polyhedron) = pm_object(P).NEIGHBORLY::Bool
+
+@doc raw"""
+    is_cubical(P::Polyhedron)
+
+Check whether `P` is cubical, i.e., each proper face is combinatorially equivalent to a cube.
+
+# Examples
+
+For details concerning the following construction see [JZ00](@cite).
+
+```jldoctest
+julia> Q = cube(2,-1,1); Q2 = cube(2,-2,2); P = convex_hull(product(Q,Q2), product(Q2,Q))
+Polyhedron in ambient dimension 4
+
+julia> is_cubical(P)
+true
+```
+"""
+is_cubical(P::Polyhedron) = pm_object(P).CUBICAL::Bool
 
 @doc raw"""
     is_fulldimensional(P::Polyhedron)
@@ -1433,8 +1511,7 @@ function _squared_distance(p::PointVector, q::PointVector)
 end
 
 function _has_equal_facets(P::Polyhedron)
-  nv = facet_sizes(P)
-  return @static VERSION >= v"1.8" ? allequal(nv) : length(unique(nv)) == 1
+  return allequal(facet_sizes(P))
 end
 
 @doc raw"""
@@ -1508,12 +1585,12 @@ julia> f_vector(cube(5))
  10
 ```
 """
-function f_vector(P::Polyhedron)::Vector{ZZRingElem}
+function f_vector(P::Polyhedron)
   # the following differs from polymake's count in the unbounded case;
   # polymake takes the far face into account, too
   ldim = lineality_dim(P)
   f_vec = vcat(zeros(Int64, ldim), [length(faces(P, i)) for i in ldim:(dim(P) - 1)])
-  return f_vec
+  return Vector{ZZRingElem}(f_vec)
 end
 
 @doc raw"""
@@ -1533,9 +1610,9 @@ julia> h_vector(cross_polytope(3))
  1
 ```
 """
-function h_vector(P::Polyhedron)::Vector{ZZRingElem}
+function h_vector(P::Polyhedron)
   @req is_bounded(P) "defined for bounded polytopes only"
-  return pm_object(P).H_VECTOR
+  return Vector{ZZRingElem}(pm_object(P).H_VECTOR)
 end
 
 @doc raw"""
@@ -1553,9 +1630,9 @@ julia> g_vector(cross_polytope(3))
  2
 ```
 """
-function g_vector(P::Polyhedron)::Vector{ZZRingElem}
+function g_vector(P::Polyhedron)
   @req is_bounded(P) "defined for bounded polytopes only"
-  return pm_object(P).G_VECTOR
+  return Vector{ZZRingElem}(pm_object(P).G_VECTOR)
 end
 
 @doc raw"""

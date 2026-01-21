@@ -38,7 +38,7 @@ end
   @test length(z) == 5
 
   z = irreducible_modules(ZZ, G)
-  @test length(z) == 5
+  @test length(z) == 3
 
   l = irreducible_modules(AbsSimpleNumField, small_group(48, 17), minimal_degree = true)
   ds = degree.(base_ring.(l))
@@ -130,7 +130,7 @@ end
   H2 = Oscar.GrpCoh.cohomology_group(M, 2)
   x = collect(H2[1])[1]
   c = H2[2](x)
-  e = extension(c)
+  e = extension(FPGroup, c)
   GG = e[1]
   @test order(GG) == 216
   @test GG isa FPGroup
@@ -189,7 +189,7 @@ end
   X = cyclic_group(4)
   M, _ = sub(X, [X[1]^2])
   C, c = extension_with_abelian_kernel(X, M)
-  @test is_isomorphic(extension(c)[1], X)
+  @test is_isomorphic(extension(FPGroup, c)[1], X)
 end
 
 @testset "Experimental Schur" begin
@@ -203,7 +203,7 @@ end
   M = trivial_gmodule(G, Z2)
   h, mh = cohomology_group(M, 2)
   @test Set(is_stem_extension(Oscar.GrpExt(mh(x))) for x = h) == Set([0,1]) 
-  @test Set(is_stem_extension(extension(mh(x))[2]) for x = h) == Set([0,1]) 
+  @test Set(is_stem_extension(extension(mh(x))) for x = h) == Set([0,1])
 
 
 end
@@ -284,6 +284,8 @@ end
 
 @testset "Various" begin
   @test length(all_extensions(abelian_group(2), cyclic_group(PermGroup, 2))) == 2
+  @test length(all_extensions(abelian_group([6, 6]), cyclic_group(6))) == 32
+
   k, a = cyclotomic_field(5)
   zk = maximal_order(k)
 
@@ -333,4 +335,20 @@ end
 
   C, _ = Oscar.GModuleFromGap.ghom(C, C)
   @test dim(C) == 49
+end
+
+@testset "_irred_abelian" begin
+  G = abelian_group(PcGroup, [3, 3, 5])
+  reps = Oscar.GModuleFromGap._irred_abelian(G, GF(2))
+  @test multiset(map(dim, reps)) == multiset(Dict(1 => 1, 2 => 4, 4 => 9))
+  reps = Oscar.GModuleFromGap._irred_abelian(G, GF(2, 2))
+  @test multiset(map(dim, reps)) == multiset(Dict(1 => 9, 2 => 18))
+  reps = Oscar.GModuleFromGap._irred_abelian(G, GF(2, 4))
+  @test multiset(map(dim, reps)) == multiset(Dict(1 => 45))
+  reps = Oscar.GModuleFromGap._irred_abelian(G, GF(3))
+  @test multiset(map(dim, reps)) == multiset(Dict(1 => 1, 4 => 1))
+  reps = Oscar.GModuleFromGap._irred_abelian(G, GF(3, 2))
+  @test multiset(map(dim, reps)) == multiset(Dict(1 => 1, 2 => 2))
+  reps = Oscar.GModuleFromGap._irred_abelian(G, GF(3, 4))
+  @test multiset(map(dim, reps)) == multiset(Dict(1 => 5))
 end

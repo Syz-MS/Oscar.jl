@@ -439,19 +439,31 @@ end
 ########################################################################
 
 """
-    centralizer(G::MatrixGroup{T}, x::MatrixGroupElem{T})
+    centralizer(G::MatGroup{T}, x::MatGroupElem{T})
 
 Return (`C`,`f`), where `C` is the centralizer of `x` in `C` and `f` is the embedding of `C` into `G`.
-If `G` = `GL(n,F)` or `SL(n,F)`, then `f` = `nothing`. In this case, to get the embedding homomorphism of `C` into `G`, use
-> `is_subgroup(C, G)[2]`
+
+# Examples
+```jldoctest
+julia> g = Sp(4, 2);  x = gen(g, 1);
+
+julia> C, emb = centralizer(g, x)
+(Matrix group of degree 4 over GF(2), Hom: C -> g)
+
+julia> order(C)
+8
+```
 """
-function centralizer(G::MatrixGroup{T}, x::MatrixGroupElem{T}) where T <: FinFieldElem
+function centralizer(G::MatGroup{T}, x::MatGroupElem{T}) where T <: FinFieldElem
    if isdefined(G,:descr) && (G.descr==:GL || G.descr==:SL)
       V,card = G.descr==:GL ? _centralizer_GL(matrix(x)) : _centralizer_SL(matrix(x))
       H = matrix_group(base_ring(G), degree(G), V)
       set_attribute!(H, :order => ZZRingElem(card))
-      return H, nothing          # do not return the embedding of the centralizer into G to do not compute G.X
+      # Compute the embedding *without* `is_subset` check,
+      # in particular without creating `GapObj(H)`.
+      _, emb = is_subgroup(H, G; check = false)
+      return H, emb
    end
-   C = GAP.Globals.Centralizer(GapObj(G), GapObj(x))
+   C = GAPWrap.Centralizer(GapObj(G), GapObj(x))
    return _as_subgroup(G, C)
 end

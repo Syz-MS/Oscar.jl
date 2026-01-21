@@ -1,5 +1,6 @@
 ```@meta
 CurrentModule = Oscar
+CollapsedDocStrings = true
 DocTestSetup = Oscar.doctestsetup()
 ```
 
@@ -78,6 +79,7 @@ positive_root(::RootSystem, ::Int64)
 positive_roots(::RootSystem)
 negative_root(::RootSystem, ::Int64)
 negative_roots(::RootSystem)
+highest_root(::RootSystem)
 ```
 
 
@@ -145,6 +147,8 @@ is_negative_root_with_index(::RootSpaceElem)
 ```@docs
 reflect(::RootSpaceElem, ::Int)
 reflect!(::RootSpaceElem, ::Int)
+reflect(::RootSpaceElem, ::RootSpaceElem)
+reflect!(::RootSpaceElem, ::RootSpaceElem)
 ```
 
 

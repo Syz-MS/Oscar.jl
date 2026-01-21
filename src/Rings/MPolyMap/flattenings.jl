@@ -51,7 +51,7 @@
     G = grading_group(S)
     w = degree.(gens(S))
     new_w = vcat(w, [zero(G) for i in 1:ngens(R)])
-    S_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)), new_w; cached = false)
+    S_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)); weights = new_w, cached = false)
     set_default_ordering!(S_flat, 
          matrix_ordering(S_flat, 
              block_diagonal_matrix(
@@ -109,7 +109,7 @@
 
     # Before building S_flat, we have to create a polynomial 
     # ring T_flat from which we can pass to the quotient.
-    T_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)), new_w; cached = false)
+    T_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)); weights = new_w, cached = false)
     set_default_ordering!(T_flat, 
          matrix_ordering(T_flat, 
              block_diagonal_matrix(
@@ -189,7 +189,7 @@
 
     # Before building S_flat, we have to create a polynomial 
     # ring T_flat from which we can pass to the localized quotient.
-    T_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)), new_w; cached = false)
+    T_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)); weights = new_w, cached = false)
     set_default_ordering!(T_flat, 
          matrix_ordering(T_flat, 
              block_diagonal_matrix(
@@ -258,7 +258,7 @@
 
     # Before building S_flat, we have to create a polynomial 
     # ring T_flat from which we can pass to the localized quotient.
-    T_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)), new_w; cached = false)
+    T_flat, _ = graded_polynomial_ring(kk, vcat(symbols(S), symbols(R)); weights = new_w, cached = false)
     set_default_ordering!(T_flat, 
          matrix_ordering(T_flat, 
              block_diagonal_matrix(
@@ -455,25 +455,18 @@ function flat_counterparts(phi::RingFlattening)
 end
 
 ### Some basic functionality
-function flatten(R::MPolyRing; cached::Bool=false)
-  return get_attribute!(R, :flatten) do
-    RingFlattening(R; cached)
-  end::RingFlattening
+@attr RingFlattening{typeof(R)} function flatten(R::MPolyRing; cached::Bool=false)
+  return RingFlattening(R; cached)
 end
 
-function flatten(R::MPolyQuoRing; cached::Bool=false)
-  return get_attribute!(R, :flatten) do
-    RingFlattening(R; cached)
-  end::RingFlattening
+@attr RingFlattening{typeof(R)} function flatten(R::MPolyQuoRing; cached::Bool=false)
+  return RingFlattening(R; cached)
 end
 
 function (phi::RingFlattening)(I::MPolyIdeal)
-  if haskey(flat_counterparts(phi), I)
-    return flat_counterparts(phi)[I][1]
-  end
-  I_flat = ideal(codomain(phi), elem_type(codomain(phi))[phi(g) for g in gens(I)])
-  flat_counterparts(phi)[I] = (I_flat, phi)
-  return I_flat
+  return get!(flat_counterparts(phi), I) do
+    return ideal(codomain(phi), elem_type(codomain(phi))[phi(g) for g in gens(I)])
+  end::ideal_type(codomain(phi))
 end
 
 function preimage(phi::RingFlattening, x::RingElem)
@@ -498,6 +491,23 @@ end
   imgs = flat_T.(f.(gens(S))) # The first half of the images
   imgs = vcat(imgs, flat_T.(gens(coefficient_ring(S)))) # the ones from the base ring
   return hom(codomain(flat_S), codomain(flat_T), imgs, check=false)
+end
+
+### Computation of induced morphisms on flattened towers of polynomial rings
+@attr Any function flatten(
+    f::MPolyAnyMap{<:MPolyRing,
+                   <:MPolyRing{RingElemType},
+                   Nothing
+                  }
+  ) where {RingElemType <: Union{<:MPolyRingElem, <:MPolyQuoRingElem, <:MPolyLocRingElem, 
+                                 <:MPolyQuoLocRingElem
+                                }
+          }
+  S = domain(f)
+  T = codomain(f)
+  flat_T = flatten(T)
+  imgs = flat_T.(f.(gens(S)))
+  return hom(S, codomain(flat_T), imgs, check=false)
 end
 
 @attr Any function flatten(
@@ -558,7 +568,7 @@ function coordinates(
                                  }
           }
   phi = flatten(parent(x))
-  return change_base_ring(inverse(phi), (coordinates(phi(x), phi(I))))
+  return map_entries(inverse(phi), (coordinates(phi(x), phi(I))))
 end
 
 ########################################################################
@@ -583,7 +593,7 @@ function kernel(
   K_flat = kernel(f_flat)
   phi = flatten(domain(f))
   K = ideal(domain(f), inverse(phi).(gens(K_flat)))
-  flat_counterparts(phi)[K] = (K_flat, phi)
+  flat_counterparts(phi)[K] = K_flat
   return K
 end
 
@@ -599,7 +609,7 @@ function kernel(
   f_flat = hom(codomain(phi), codomain(f), f.(inverse(phi).(gens(codomain(phi)))), check=false)
   K_flat = kernel(f_flat)
   K = ideal(domain(f), inverse(phi).(gens(K_flat)))
-  flat_counterparts(phi)[K] = (K_flat, phi)
+  flat_counterparts(phi)[K] = K_flat
   return K
 end
 

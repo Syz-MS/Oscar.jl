@@ -1,4 +1,4 @@
-using JSON
+import JSON
 using TOPCOM_jll
 
 function _postprocess_polymake_triangs(
@@ -14,7 +14,7 @@ end
 function topcom_regular_triangulations(
   pts::AbstractCollection[PointVector]; full::Bool=false
 )
-  input = homogenized_matrix(pts, 1)
+  input = homogenized_matrix(QQ, pts, 1)
   PC = Polymake.polytope.PointConfiguration(; POINTS=input)
   result = if full
     Polymake.polytope.topcom_fine_and_regular_triangulations(PC)
@@ -27,7 +27,7 @@ end
 function topcom_regular_triangulation(
   pts::AbstractCollection[PointVector]; full::Bool=false
 )
-  input = homogenized_matrix(pts, 1)
+  input = homogenized_matrix(QQ, pts, 1)
   inputstr = join(["[" * join(input[i, :], ",") * "]" for i in 1:nrows(input)], ",\n")
   in = Pipe()
   out = Pipe()
@@ -139,7 +139,7 @@ julia> all_triangulations(V)
 ```
 """
 function all_triangulations(pts::AbstractCollection[PointVector]; full::Bool=false)
-  input = homogenized_matrix(pts, 1)
+  input = homogenized_matrix(QQ, pts, 1)
   PC = Polymake.polytope.PointConfiguration(; POINTS=input)
   PC.FULL_DIM::Bool || error("Input points must have full rank.")
   result = if full
@@ -292,7 +292,7 @@ julia> regular_triangulations(V)
 ```
 """
 function regular_triangulations(pts::AbstractCollection[PointVector]; full::Bool=false)
-  input = homogenized_matrix(pts, 1)
+  input = homogenized_matrix(QQ, pts, 1)
   PC = Polymake.polytope.PointConfiguration(; POINTS=input)
   PC.FULL_DIM::Bool || error("Input points must have full rank.")
   return topcom_regular_triangulations(pts; full=full)
@@ -335,7 +335,7 @@ end
 @doc raw"""
     regular_triangulation(pts::AbstractCollection[PointVector]; full=false)
 
-Computes ONE regular triangulations on the points given as the rows of `pts`.
+Compute ONE regular triangulation on the points given as the rows of `pts`.
 
 A triangulation is regular if it can be induced by weights, i.e. attach a
 weight to every point, take the convex hull of these new vectors and then take
@@ -369,7 +369,7 @@ julia> regular_triangulation(V)
 ```
 """
 function regular_triangulation(pts::AbstractCollection[PointVector]; full::Bool=false)
-  input = homogenized_matrix(pts, 1)
+  input = homogenized_matrix(QQ, pts, 1)
   PC = Polymake.polytope.PointConfiguration(; POINTS=input)
   PC.FULL_DIM::Bool || error("Input points must have full rank.")
   return topcom_regular_triangulation(pts; full=full)
@@ -378,7 +378,7 @@ end
 @doc raw"""
     regular_triangulation(P::Polyhedron)
 
-Computes ONE regular triangulations that can be formed using the vertices of the
+Compute ONE regular triangulation that can be formed using the vertices of the
 given bounded and full-dimensional polytope `P`.
 
 A triangulation is regular if it can be induced by weights, i.e. attach a
@@ -428,6 +428,8 @@ Polytope in ambient dimension 8
 ```
 """
 function secondary_polytope(P::Polyhedron{T}) where {T<:scalar_types}
+  @req is_bounded(P) "secondary_polytope only works for polytopes, i.e. bounded polyhedra."
+  @req is_fulldimensional(P) "Polytope must be full-dimensional, use a projection."
   return Polyhedron{T}(
     Polymake.polytope.secondary_polytope(pm_object(P)), coefficient_field(P)
   )

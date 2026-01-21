@@ -41,23 +41,29 @@ if Sys.iswindows()
   windows_error()
 end
 
+if VERSION < v"1.10.0-"
+  error("the required julia version is at least 1.10.0")
+end
+
 function _print_banner(;is_dev = Oscar.is_dev)
   # lets assemble a version string for the banner
   version_string = string(VERSION_NUMBER)
   if is_dev
     gitinfo = _get_oscar_git_info()
-    version_string = version_string * " #$(gitinfo[:branch]) $(gitinfo[:commit][1:7]) $(gitinfo[:date][1:10])"
+    version_string = version_string * " " * _short_git_info(gitinfo)
   else
     version_string = "Version " * version_string
   end
 
   if displaysize(stdout)[2] >= 80 
     println(
-      raw"""  ___   ____   ____    _    ____
-             / _ \ / ___| / ___|  / \  |  _ \   |  Combining ANTIC, GAP, Polymake, Singular
-            | | | |\___ \| |     / _ \ | |_) |  |  Type "?Oscar" for more information
-            | |_| | ___) | |___ / ___ \|  _ <   |  Manual: https://docs.oscar-system.org
-             \___/ |____/ \____/_/   \_\_| \_\  |  """ * version_string)
+      raw"""  ___   ___   ___    _    ____
+             / _ \ / __\ / __\  / \  |  _ \  | Combining and extending ANTIC, GAP,
+            | |_| |\__ \| |__  / ^ \ |  ´ /  | Polymake and Singular
+             \___/ \___/ \___//_/ \_\|_|\_\  | Type "?Oscar" for more information""")
+    printstyled(raw"""o--------o-----o-----o--------o""", color = :yellow)
+    println(raw"""  | Documentation: https://docs.oscar-system.org""")
+    println(raw"""  S Y M B O L I C   T O O L S    | """ * version_string)
   else
     println("OSCAR $VERSION_NUMBER  https://docs.oscar-system.org  Type \"?Oscar\" for help")
   end
@@ -79,38 +85,26 @@ function __init__()
     [
         (GAP.Globals.IsPermGroup, PermGroup),
         (GAP.Globals.IsPcGroup, PcGroup),
-        (GAP.Globals.IsMatrixGroup, MatrixGroup),
+        (GAP.Globals.IsMatrixGroup, MatGroup),
         (GAP.Globals.IsSubgroupFpGroup, FPGroup),
         (GAP.Globals.IsGroupOfAutomorphisms, AutomorphismGroup),
     ])
   # make Oscar module accessible from GAP (it may not be available as
   # `Julia.Oscar` if Oscar is loaded indirectly as a package dependency)
-  GAP.Globals.BindGlobal(GapObj("Oscar"), Oscar)
+  GAP.Globals.BindGlobal(GapObj("Oscar_jl"), Oscar)
 
-  # Up to now, hopefully the GAP packages listed below have not been loaded.
-  # We want newer versions of some GAP packages than the distributed ones.
-  # (But we do not complain if the installation fails.)
-  for (pkg, version) in [
-     ("recog", "1.4.2"),
-     ("repsn", "3.1.1"),
-     ]
-    # Avoid downloading something if the requested version is already loaded.
-#TODO: Remove this check as soon as GAP.jl contains it,
-#      see https://github.com/oscar-system/GAP.jl/pull/1019.
-    info = GAP.Globals.GAPInfo.PackagesLoaded
-    if !(hasproperty(info, pkg) && version == string(getproperty(info, pkg)[2]))
-      GAP.Packages.install(pkg, version, interactive = false, quiet = true)
-    end
-  end
+  # Add the directory `gap/` as a GAP root path, so that GAP can find the
+  # OscarInterface package and we can overload specific GAP library files.
+  GAP.Globals.ExtendRootDirectories(GapObj([abspath(joinpath(@__DIR__, "..", "gap"))]; recursive = true))
 
-  withenv("TERMINFO_DIRS" => joinpath(GAP.GAP_jll.Readline_jll.Ncurses_jll.find_artifact_dir(), "share", "terminfo")) do
-    GAP.Packages.load("browse"; install=true) # needed for all_character_table_names doctest
-  end
   # We need some GAP packages (currently with unspecified versions).
   for pkg in [
+     "OscarInterface", # contains all GAP code that is part of Oscar
      "atlasrep",
+     "browse",   # needed for all_character_table_names doctest
      "ctbllib",  # character tables
      "crisp",    # faster normal subgroups, socles, p-socles for finite solvable groups
+     "ferret",   # backtrack in permutation groups
      "fga",      # dealing with free groups
      "forms",    # bilinear/sesquilinear/quadratic forms
      "packagemanager", # has been loaded already by GAP.jl
@@ -124,17 +118,7 @@ function __init__()
      ]
     GAP.Packages.load(pkg) || error("cannot load the GAP package $pkg")
   end
-  # We want some GAP packages. (It is no error if they cannot be loaded.)
-  for pkg in [
-     "ferret",   # backtrack in permutation groups
-     ]
-    GAP.Packages.load(pkg)
-  end
-  # Load the OscarInterface package in the end.
-  # It needs some other GAP packages,
-  # and is not needed by packages that can be loaded before Oscar.
-  GAP.Globals.SetPackagePath(GAP.Obj("OscarInterface"), GAP.Obj(joinpath(@__DIR__, "..", "gap", "OscarInterface")))
-  GAP.Globals.LoadPackage(GAP.Obj("OscarInterface"), false)
+
   # Switch off GAP's info messages,
   # also those that are triggered from GAP packages.
   __GAP_info_messages_off()
@@ -142,6 +126,15 @@ function __init__()
 
   add_verbosity_scope(:K3Auto)
   add_assertion_scope(:K3Auto)
+
+  add_verbosity_scope(:Isometry)
+  add_assertion_scope(:Isometry)
+  
+  add_verbosity_scope(:OrthogonalStablizer)
+  add_assertion_scope(:OrthogonalStablizer)
+
+  add_verbosity_scope(:EnriquesAuto)
+  add_assertion_scope(:EnriquesAuto)
 
   add_verbosity_scope(:EllipticSurface)
   add_assertion_scope(:EllipticSurface)
@@ -182,12 +175,22 @@ function __init__()
   add_assertion_scope(:IdealSheaves)
   add_verbosity_scope(:IdealSheaves)
 
+  add_verbosity_scope(:SchurIndices)
+
+  add_verbosity_scope(:DirectImages)
+
   # Pkg.is_manifest_current() returns false if the manifest might be out of date
   # (but might return nothing when there is no project_hash)
-  if is_dev && VERSION >= v"1.8" && false === (VERSION < v"1.11.0-DEV.1135" ?
+  if is_dev && false === (VERSION < v"1.11.0-DEV.1135" ?
       Pkg.is_manifest_current() :
       Pkg.is_manifest_current(dirname(Base.active_project())))
     @warn "Project dependencies might have changed, please run `]up` or `]resolve`."
+  end
+
+  # call git subprocess here to avoid conflicts with
+  # IPC communication serialization
+  if Oscar.is_dev
+    Serialization.get_oscar_serialization_version()
   end
 end
 
@@ -256,18 +259,21 @@ include("fallbacks.jl")
 
 include("Rings/Rings.jl")
 include("forward_declarations.jl")
-include("Groups/Groups.jl")
+include("Misc/Misc.jl")
+include("Groups/Groups.jl")  # Needs IndexedSet
 
 include("GAP/GAP.jl")
 
-include("../gap/OscarInterface/julia/alnuth.jl")
+include("../gap/pkg/OscarInterface/julia/constants.jl")
 
 
 include("Modules/Modules.jl")
 include("Rings/ReesAlgebra.jl") # Needs ModuleFP
 
 include("NumberTheory/NmbThy.jl")
+include("NumberTheory/QuadFormAndIsom.jl")
 include("NumberTheory/vinberg.jl")
+include("NumberTheory/ZLattices.jl")
 
 include("Combinatorics/Graphs/structs.jl")
 include("PolyhedralGeometry/PolyhedralGeometry.jl")
@@ -275,14 +281,16 @@ include("PolyhedralGeometry/PolyhedralGeometry.jl")
 include("Polymake/polymake_to_oscar.jl")
 
 include("Combinatorics/Graphs/functions.jl")
+include("Combinatorics/PhylogeneticTrees.jl")
+
 include("Combinatorics/SimplicialComplexes.jl")
-include("Combinatorics/OrderedMultiIndex.jl")
 include("Combinatorics/Matroids/JMatroids.jl")
 include("Combinatorics/EnumerativeCombinatorics/EnumerativeCombinatorics.jl")
+include("Combinatorics/PartiallyOrderedSet/structs.jl")
+include("Combinatorics/PartiallyOrderedSet/functions.jl")
 
 include("PolyhedralGeometry/visualization.jl") # needs SimplicialComplex
-
-include("Combinatorics/PhylogeneticTrees.jl")
+include("Groups/subspaces.jl") # needs EnumerativeCombinatorics
 
 include("StraightLinePrograms/StraightLinePrograms.jl")
 include("Rings/lazypolys.jl") # uses StraightLinePrograms
@@ -297,7 +305,6 @@ include("InvariantTheory/InvariantTheory.jl")
 
 include("LieTheory/LieTheory.jl")
 
-include("Misc/Misc.jl")
 
 # Serialization should always come at the end of Oscar source code
 # but before experimental, any experimental serialization should

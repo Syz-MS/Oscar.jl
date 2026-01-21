@@ -1,4 +1,4 @@
-function Base.show(io::IO, x::GAPGroupHomomorphism)
+function Base.show(io::IO, x::Union{GAPGroupHomomorphism, GAPGroupEmbedding})
   if is_terse(io)
     print(io, "Group homomorphism")
   else
@@ -13,38 +13,93 @@ function ==(f::GAPGroupHomomorphism, g::GAPGroupHomomorphism)
   return GapObj(f) == GapObj(g)
 end
 
-function Base.hash(f::GAPGroupHomomorphism{S,T}, h::UInt) where S where T
-  b = 0xdc777737af4c0c7b % UInt
-  return xor(hash(GapObj(f), hash((S, T), h)), b)
+function ==(f::GAPGroupHomomorphism, g::GAPGroupEmbedding)
+  C = codomain(f)
+  return domain(f) == domain(g) && C == codomain(g) &&
+         all(x -> C(x) == f(x), gens(domain(f)))
 end
 
-Base.:*(f::GAPGroupHomomorphism{S, T}, g::GAPGroupHomomorphism{T, U}) where S where T where U = compose(f, g)
+function ==(f::GAPGroupEmbedding, g::GAPGroupHomomorphism)
+  C = codomain(f)
+  return domain(f) == domain(g) && C == codomain(g) &&
+         all(x -> C(x) == g(x), gens(domain(g)))
+end
 
-function Base.inv(f::GAPGroupHomomorphism{S,T}) where S where T
+function ==(f::GAPGroupEmbedding, g::GAPGroupEmbedding)
+  return domain(f) == domain(g) && codomain(f) == codomain(g)
+end
+
+
+Base.hash(f::GAPGroupHomomorphism, h::UInt) = h # FIXME
+
+function Base.hash(f::GAPGroupEmbedding{S,T}, h::UInt) where S where T
+  b = 0xdc777737af4c0c7b % UInt
+  return xor(hash((domain(f), codomain(f)), h), b)
+end
+
+
+Base.:*(f::Union{GAPGroupHomomorphism{S, T}, GAPGroupEmbedding{S, T}}, g::Union{GAPGroupHomomorphism{T, U}, GAPGroupEmbedding{T, U}}) where {S, T, U} = compose(f, g)
+
+
+function Base.inv(f::GAPGroupHomomorphism)
    @assert GAPWrap.IsBijective(GapObj(f)) "f is not bijective"
    return GAPGroupHomomorphism(codomain(f), domain(f), GAP.Globals.InverseGeneralMapping(GapObj(f)))
 end
 
-order(f::GAPGroupHomomorphism) = GAPWrap.Order(GapObj(f))
+function Base.inv(f::GAPGroupEmbedding)
+   @assert domain(f) == codomain(f) "f is not bijective"
+   return GAPGroupEmbedding(codomain(f), domain(f))
+end
+
+function order(f::GAPGroupHomomorphism)
+  @req is_bijective(f) "f is not bijective"
+  return GAPWrap.Order(GapObj(f))
+end
+
+function order(f::GAPGroupEmbedding)
+  @req domain(f) == codomain(f) "f is not bijective"
+  return 1
+end
 
 function Base.:^(f::GAPGroupHomomorphism{S,T}, n::Int64) where S where T
    if n==1
      return f
    else
       @assert domain(f) == codomain(f) "Domain and codomain do not coincide"
+#TODO: For positive `n`,
+#      wouldn't it be enough if the image is contained in the preimage?
+#      (This makes sense and works on the GAP side.)
       return GAPGroupHomomorphism(domain(f),codomain(f),(GapObj(f))^n)
    end
 end
 
-function compose(f::GAPGroupHomomorphism{S, T}, g::GAPGroupHomomorphism{T, U}) where {S, T, U}
+function Base.:^(f::GAPGroupEmbedding, n::Int64)
+   @assert domain(f) == codomain(f) "Domain and codomain do not coincide"
+   return f
+end
+
+# There is no support in GAP (yet) for a composition of a group homomorphism
+# followed by an embedding.
+function compose(f::GAPGroupHomomorphism{S, T}, g::Union{GAPGroupHomomorphism{T, U}, GAPGroupEmbedding{T, U}}) where {S, T, U}
+  check_composable(f, g)
   dom = domain(f)
   cod = codomain(g)
-  @assert codomain(f) == domain(g)
   mp = GAP.Globals.CompositionMapping(GapObj(g), GapObj(f))
   return GAPGroupHomomorphism(dom, cod, mp)
 end
 
-#(g::GAPGroupHomomorphism{T, U})(f::GAPGroupHomomorphism{S, T}) where {S,T,U} = compose(f,g)
+function compose(f::GAPGroupEmbedding{S, T}, g::GAPGroupEmbedding{T, U}) where {S, T, U}
+  check_composable(f, g)
+  return GAPGroupEmbedding(domain(f), codomain(g))
+end
+
+function compose(f::GAPGroupEmbedding{S, T}, g::GAPGroupHomomorphism{T, U}) where {S, T, U}
+  check_composable(f, g)
+  dom = domain(f)
+  cod = codomain(g)
+  mp = GAP.Globals.RestrictedMapping(GapObj(g), GapObj(dom))
+  return GAPGroupHomomorphism(dom, cod, mp)
+end
 
 """
     id_hom(G::GAPGroup)
@@ -66,9 +121,33 @@ function trivial_morphism(G::GAPGroup, H::GAPGroup = G)
 end
 
 """
-    hom(G::GAPGroup, H::GAPGroup, f::Function)
+    hom(G::GAPGroup, H::GAPGroup, img::Function[, preimg::Function])
 
-Return the group homomorphism defined by the function `f`.
+Return the group homomorphism defined by the function `img` that takes
+an element `x` of `G` as its argument and returns the element of `H`
+that is the image of `x` under the map.
+
+If a second function `preimg` is given then it takes an element `y` of `H`
+and returns the element of `G` that is the preimage of `y` under the map.
+
+It is *not* checked whether the returned map is actually a group homomorphism.
+
+# Examples
+```jldoctest
+julia> S = symmetric_group(4);
+
+julia> x = S[1];
+
+julia> f = hom(S, S, [y^x for y in gens(S)])
+Group homomorphism
+  from symmetric group of degree 4
+  to symmetric group of degree 4
+
+julia> g = hom(S, S, y -> y^x)
+Group homomorphism
+  from symmetric group of degree 4
+  to symmetric group of degree 4
+```
 """
 function hom(G::GAPGroup, H::GAPGroup, img::Function)
 
@@ -84,8 +163,6 @@ function hom(G::GAPGroup, H::GAPGroup, img::Function)
   return GAPGroupHomomorphism(G, H, mp)
 end
 
-# This method is used for those embeddings that are
-# the identity on the GAP side.
 function hom(G::GAPGroup, H::GAPGroup, img::Function, preimg::Function; is_known_to_be_bijective::Bool = false)
   function gap_fun(x::GapObj)
     el = group_element(G, x)
@@ -108,22 +185,42 @@ function hom(G::GAPGroup, H::GAPGroup, img::Function, preimg::Function; is_known
   return GAPGroupHomomorphism(G, H, mp)
 end
 
-"""
-    hom(G::GAPGroup, H::GAPGroup, gensG::Vector = gens(G), imgs::Vector; check::Bool = true)
 
-Return the group homomorphism defined by `gensG`[`i`] -> `imgs`[`i`] for every
-`i`. In order to work, the elements of `gensG` must generate `G`.
+"""
+    hom(G::Group, H::Group, gensG::Vector = gens(G), imgs::Vector; check::Bool = true)
+
+Return the group homomorphism from `G`to `H` that is defined by
+mapping `gensG`[`i`] -> `imgs`[`i`] for every `i`.
+For that, the elements of `gensG` must generate `G`,
+and `gensG` and `imgs` must have the same length.
 
 If `check` is set to `false` then it is not checked whether the mapping
 defines a group homomorphism.
+Otherwise an exception is thrown if the input does not define
+a group homomorphism.
+
+# Examples
+```jldoctest
+julia> S = symmetric_group(4);
+
+julia> x = S[1];
+
+julia> f = hom(S, S, [y^x for y in gens(S)])
+Group homomorphism
+  from symmetric group of degree 4
+  to symmetric group of degree 4
+
+julia> f == hom(S, S, y -> y^x)
+true
+```
 """
 function hom(G::GAPGroup, H::GAPGroup, gensG::Vector, imgs::Vector; check::Bool = true)
   vgens = GapObj(gensG; recursive = true)
   vimgs = GapObj(imgs; recursive = true)
   if check
-    mp = GAP.Globals.GroupHomomorphismByImages(GapObj(G), GapObj(H), vgens, vimgs)
+    mp = GAPWrap.GroupHomomorphismByImages(GapObj(G), GapObj(H), vgens, vimgs)
   else
-    mp = GAP.Globals.GroupHomomorphismByImagesNC(GapObj(G), GapObj(H), vgens, vimgs)
+    mp = GAPWrap.GroupHomomorphismByImagesNC(GapObj(G), GapObj(H), vgens, vimgs)
   end
   @req mp !== GAP.Globals.fail "Invalid input"
   return GAPGroupHomomorphism(G, H, mp)
@@ -132,6 +229,13 @@ end
 function hom(G::GAPGroup, H::GAPGroup, imgs::Vector; check::Bool = true)
   return hom(G, H, gens(G), imgs; check)
 end
+
+
+################################################################################
+#
+#  `hom` between `GAPGroup` and `FinGenAbGroup`
+#
+################################################################################
 
 # Map `G::GAPGroup` to `A::FinGenAbGroup` by prescribing images.
 # Return a composition of homomorphisms `G -> G/G' -> B -> A`,
@@ -146,9 +250,9 @@ function hom(G::GAPGroup, A::FinGenAbGroup, gensG::Vector, imgs::Vector{FinGenAb
 
   # map B to A as prescribed
   if length(gensG) == 0
-    map2 = hom([zero(B)], [zero(A)], check = check)
+    map2 = hom(B, A, [zero(B)], [zero(A)], check = check)
   else
-    map2 = hom([iso(map1(x)) for x in gensG], imgs, check = check)
+    map2 = hom(B, A, [iso(map1(x)) for x in gensG], imgs, check = check)
   end
 
   # create the composition
@@ -159,35 +263,128 @@ function hom(G::GAPGroup, A::FinGenAbGroup, imgs::Vector{FinGenAbGroupElem}; che
   return hom(G, A, gens(G), imgs; check)
 end
 
-function domain(f::GAPGroupHomomorphism)
-  return f.domain
+# Map `A::FinGenAbGroup` to `G::GAPGroup` by prescribing images.
+# Return a composition `A -> B -> G` where `A -> B` is an isomorphism
+# to a `GAPGroup`.
+function hom(A::FinGenAbGroup, G::GAPGroup, gensA::Vector, imgs::Vector{<:GAPGroupElem}; check::Bool = true)
+  map1 = isomorphism(PcGroup, A)
+  map2 = hom(codomain(map1), G, [map1(x) for x in gensA], imgs, check = check)
+  return compose(map1, map2)
 end
 
-function codomain(f::GAPGroupHomomorphism)
-  return f.codomain
+function hom(A::FinGenAbGroup, G::GAPGroup, imgs::Vector{<:GAPGroupElem}; check::Bool = true)
+  return hom(A, G, gens(A), imgs; check)
 end
 
-(f::GAPGroupHomomorphism)(x::GAPGroupElem) = image(f, x)
-Base.:^(x::GAPGroupElem,f::GAPGroupHomomorphism) = image(f,x)
+################################################################################
+#
+#  `hom` between `GAPGroup` and `MultTableGroup`
+#
+################################################################################
+
+# Map `G::GAPGroup` to `M::MultTableGroup` by prescribing images.
+# Return a composition of homomorphisms `G -> B -> M`,
+# not a `GAPGroupHomomorphism`.
+function hom(G::GAPGroup, M::MultTableGroup, gensG::Vector, imgs::Vector{MultTableGroupElem}; check::Bool = true)
+  # map M to an isomorphic perm. group B
+  iso = isomorphism(PermGroup, M)
+  B = codomain(iso)
+
+  # map G to B as prescribed
+  map1 = hom(G, B, gensG, [iso(x) for x in imgs], check = check)
+
+  # create the composition
+  return compose(map1, inv(iso))
+end
+
+function hom(G::GAPGroup, M::MultTableGroup, imgs::Vector{MultTableGroupElem}; check::Bool = true)
+  return hom(G, M, gens(G), imgs; check)
+end
+
+# Map `M::MultTableGroup` to `G::GAPGroup` by prescribing images.
+# Return a composition `M -> B -> G` where `M -> B` is an isomorphism
+# to a `GAPGroup`.
+function hom(M::MultTableGroup, G::GAPGroup, gensM::Vector, imgs::Vector{<:GAPGroupElem}; check::Bool = true)
+  map1 = isomorphism(PermGroup, M)
+  map2 = hom(codomain(map1), G, [map1(x) for x in gensM], imgs, check = check)
+  return compose(map1, map2)
+end
+
+function hom(M::MultTableGroup, G::GAPGroup, imgs::Vector{<:GAPGroupElem}; check::Bool = true)
+  return hom(M, G, gens(M), imgs; check)
+end
+
+
+################################################################################
+#
+#  GAPGroupHomomorphism and GAPGroupEmbedding
+#
+################################################################################
+
+# domain and codomain are always stored
+domain(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding}) = f.domain
+
+codomain(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding}) = f.codomain
+
 
 """
     image(f::GAPGroupHomomorphism, x::GAPGroupElem)
+    image(f::GAPGroupEmbedding, x::GAPGroupElem)
     (f::GAPGroupHomomorphism)(x::GAPGroupElem)
+    (f::GAPGroupEmbedding)(x::GAPGroupElem)
 
-Return `f`(`x`).
+Return the image `f`(`x`) of `x` under `f`.
+The syntax `x^f` is also supported.
+
+# Examples
+```jldoctest
+julia> G = symmetric_group(4);
+
+julia> F, epi = quo(G, pcore(G, 2)[1])
+(Pc group of order 6, Hom: G -> F)
+
+julia> x = gen(G, 1)
+(1,2,3,4)
+
+julia> img = image(epi, x)
+f1*f2
+
+julia> img == epi(x) == x^epi
+true
+```
 """
 function image(f::GAPGroupHomomorphism, x::GAPGroupElem)
   return group_element(codomain(f), GAPWrap.ImagesRepresentative(GapObj(f), GapObj(x)))
 end
 
+# images under a `GAPGroupEmbedding` are computed by unwrapping and wrapping
+image(f::GAPGroupEmbedding, x::GAPGroupElem) = group_element(codomain(f), GapObj(x))
+
+(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding})(x::GAPGroupElem) = image(f, x)
+Base.:^(x::GAPGroupElem,f::Union{GAPGroupHomomorphism, GAPGroupEmbedding}) = image(f,x)
+
 """
-    preimage(f::GAPGroupHomomorphism, x::GAPGroupElem)
+    preimage(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding}, x::GAPGroupElem)
 
 Return an element `y` in the domain of `f` with the property `f(y) == x`.
 See [`has_preimage_with_preimage(f::GAPGroupHomomorphism, x::GAPGroupElem; check::Bool = true)`](@ref)
 for a check whether `x` has such a preimage.
+
+# Examples
+```jldoctest
+julia> G = symmetric_group(4);
+
+julia> F, epi = quo(G, pcore(G, 2)[1])
+(Pc group of order 6, Hom: G -> F)
+
+julia> x = gen(F, 1)
+f1
+
+julia> pre = preimage(epi, x)
+(3,4)
+```
 """
-function preimage(f::GAPGroupHomomorphism, x::GAPGroupElem)
+function preimage(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding}, x::GAPGroupElem)
   fl, p = has_preimage_with_preimage(f, x)
   @assert fl
   return p
@@ -195,43 +392,51 @@ end
 
 """
     is_surjective(f::GAPGroupHomomorphism)
+    is_surjective(f::GAPGroupEmbedding)
 
 Return whether `f` is surjective.
 """
-function is_surjective(f::GAPGroupHomomorphism)
-  return GAPWrap.IsSurjective(GapObj(f))
-end
+is_surjective(f::GAPGroupHomomorphism) = GAPWrap.IsSurjective(GapObj(f))
+
+is_surjective(f::GAPGroupEmbedding) = GapObj(domain(f)) == GapObj(codomain(f))
 
 """
     is_injective(f::GAPGroupHomomorphism)
+    is_injective(f::GAPGroupEmbedding)
 
 Return whether `f` is injective.
 """
-function is_injective(f::GAPGroupHomomorphism)
-  return GAPWrap.IsInjective(GapObj(f))
-end
+is_injective(f::GAPGroupHomomorphism) = GAPWrap.IsInjective(GapObj(f))
+
+# We know that the map is injective.
+is_injective(f::GAPGroupEmbedding) = true
 
 """
     is_invertible(f::GAPGroupHomomorphism)
+    is_invertible(f::GAPGroupEmbedding)
 
 Return whether `f` is invertible.
 """
-function is_invertible(f::GAPGroupHomomorphism)
-  return GAPWrap.IsBijective(GapObj(f))
-end
+is_invertible(f::GAPGroupHomomorphism) = GAPWrap.IsBijective(GapObj(f))
+
+# We know that the map is injective.
+is_invertible(f::GAPGroupEmbedding) = is_surjective(f)
 
 """
     is_bijective(f::GAPGroupHomomorphism)
+    is_bijective(f::GAPGroupEmbedding)
 
 Return whether `f` is bijective.
 """
-function is_bijective(f::GAPGroupHomomorphism)
-  return GAPWrap.IsBijective(GapObj(f))
-end
+is_bijective(f::GAPGroupHomomorphism) = GAPWrap.IsBijective(GapObj(f))
+
+# We know that the map is injective.
+is_bijective(f::GAPGroupEmbedding) = is_surjective(f)
 
 
 """
     is_invariant(f::GAPGroupHomomorphism, H::GAPGroup)
+    is_invariant(f::GAPGroupEmbedding, H::GAPGroup)
 
 Return whether `f(H) == H` holds.
 An exception is thrown if `domain(f)` and `codomain(f)` are not equal
@@ -243,12 +448,36 @@ function is_invariant(f::GAPGroupHomomorphism, H::GAPGroup)
   return GAPWrap.Image(GapObj(f), GapObj(H)) == GapObj(H)
 end
 
+function is_invariant(f::GAPGroupEmbedding, H::GAPGroup)
+  @assert domain(f) == codomain(f) "Not an endomorphism!"
+  @assert GAPWrap.IsSubset(GapObj(domain(f)), GapObj(H)) "Not a subgroup of the domain"
+  return true
+end
+
 """
     restrict_homomorphism(f::GAPGroupHomomorphism, H::Group)
+    restrict_homomorphism(f::GAPGroupEmbedding, H::Group)
     restrict_homomorphism(f::GAPGroupElem{AutomorphismGroup{T}}, H::T) where T <: Group
 
 Return the restriction of `f` to `H`.
 An exception is thrown if `H` is not a subgroup of `domain(f)`.
+
+# Examples
+```jldoctest
+julia> S = symmetric_group(4);
+
+julia> x = S[1];
+
+julia> f = hom(S, S, [y^x for y in gens(S)])
+Group homomorphism
+  from symmetric group of degree 4
+  to symmetric group of degree 4
+
+julia> A = derived_subgroup(S)[1];
+
+julia> restrict_homomorphism(f, A) == hom(A, S, [y^x for y in gens(A)])
+true
+```
 """
 function restrict_homomorphism(f::GAPGroupHomomorphism, H::GAPGroup)
   # We have to check whether `H` is really a subgroup of `f.domain`,
@@ -260,6 +489,11 @@ function restrict_homomorphism(f::GAPGroupHomomorphism, H::GAPGroup)
   return GAPGroupHomomorphism(H, f.codomain, GAP.Globals.RestrictedMapping(GapObj(f), GapObj(H))::GapObj)
 end
 
+function restrict_homomorphism(f::GAPGroupEmbedding, H::GAPGroup)
+  @assert is_subset(H, domain(f)) "Not a subgroup!"
+  return GAPGroupEmbedding(H, codomain(f))
+end
+
 ################################################################################
 #
 #  Image, Kernel, Cokernel
@@ -268,6 +502,7 @@ end
 
 """
     kernel(f::GAPGroupHomomorphism)
+    kernel(f::GAPGroupEmbedding)
 
 Return the kernel of `f`, together with its embedding into `domain`(`f`).
 """
@@ -276,8 +511,11 @@ function kernel(f::GAPGroupHomomorphism)
   return _as_subgroup(domain(f), K)
 end
 
+kernel(f::GAPGroupEmbedding) = trivial_subgroup(domain(f))
+
 """
     image(f::GAPGroupHomomorphism)
+    image(f::GAPGroupEmbedding)
 
 Return the image of `f` as subgroup of `codomain`(`f`), together with the embedding homomorphism.
 """
@@ -286,26 +524,35 @@ function image(f::GAPGroupHomomorphism)
   return _as_subgroup(codomain(f), K)
 end
 
+image(f::GAPGroupEmbedding) = _as_subgroup(codomain(f), GapObj(domain(f)))
+
 """
-    image(f::GAPGroupHomomorphism{S, T}, H::S) where S <: GAPGroup where T <: GAPGroup
-    (f::GAPGroupHomomorphism{S, T})(H::S)
+    image(f::GAPGroupHomomorphism, H::GAPGroup)
+    image(f::GAPGroupEmbedding, H::GAPGroup)
+    (f::GAPGroupHomomorphism)(H::GAPGroup)
+    (f::GAPGroupEmbedding)(H::GAPGroup)
 
 Return `f`(`H`), together with the embedding homomorphism into `codomain`(`f`).
 """
-function image(f::GAPGroupHomomorphism{S, T}, H::S) where S <: GAPGroup where T <: GAPGroup
+function image(f::GAPGroupHomomorphism, H::GAPGroup)
   H1 = GAPWrap.Image(GapObj(f), GapObj(H))
   return _as_subgroup(codomain(f), H1)
 end
 
-(f::GAPGroupHomomorphism{S, T})(H::S) where S <: GAPGroup where T <: GAPGroup = image(f,H)
+function image(f::GAPGroupEmbedding, H::GAPGroup)
+  return _as_subgroup(codomain(f), GapObj(H))
+end
+
+(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding})(H::GAPGroup) = image(f,H)
+
 
 """
-    cokernel(f::GAPGroupHomomorphism)
+    cokernel(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding})
 
 Return the cokernel of `f`, that is, the quotient of the codomain of `f`
 by the normal closure of the image.
 """
-function cokernel(f::GAPGroupHomomorphism)
+function cokernel(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding})
   K, mK = image(f)
   C = codomain(f)
   return quo(C, normal_closure(C, K)[1])
@@ -313,6 +560,7 @@ end
 
 """
     has_preimage_with_preimage(f::GAPGroupHomomorphism, x::GAPGroupElem; check::Bool = true)
+    has_preimage_with_preimage(f::GAPGroupEmbedding, x::GAPGroupElem; check::Bool = true)
 
 Return (`true`, `y`) if there exists `y` in `domain(f)`
 such that `f`(`y`) = `x` holds;
@@ -320,9 +568,28 @@ otherwise, return (`false`, `o`) where `o` is the identity of `domain(f)`.
 
 If `check` is set to `false` then the test whether `x` is an element of
 `image(f)` is omitted.
+
+# Examples
+```jldoctest
+julia> G = symmetric_group(4);
+
+julia> F, epi = quo(G, pcore(G, 2)[1])
+(Pc group of order 6, Hom: G -> F)
+
+julia> x = gen(F, 1)
+f1
+
+julia> has_preimage_with_preimage(epi, x)
+(true, (3,4))
+```
 """
 function has_preimage_with_preimage(f::GAPGroupHomomorphism, x::GAPGroupElem; check::Bool = true)
   return _haspreimage(GapObj(f), domain(f), image(f)[1], x, check = check)
+end
+
+function has_preimage_with_preimage(f::GAPGroupEmbedding, x::GAPGroupElem; check::Bool = true)
+  check && ! (x in image(f)[1]) && return false, one(domain(f))
+  return true, group_element(domain(f), GapObj(x))
 end
 
 # helper function for computing `has_preimage_with_preimage` for
@@ -349,13 +616,19 @@ end
 
 
 """
-    preimage(f::GAPGroupHomomorphism{S, T}, H::GAPGroup) where S <: GAPGroup where T <: GAPGroup
+    preimage(f::GAPGroupHomomorphism{<: GAPGroup, <: GAPGroup}, H::GAPGroup)
+    preimage(f::GAPGroupEmbedding{<: GAPGroup, <: GAPGroup}, H::GAPGroup)
 
 If `H` is a subgroup of the codomain of `f`, return the subgroup `f^-1(H)`,
 together with its embedding homomorphism into the domain of `f`.
 """
-function preimage(f::GAPGroupHomomorphism{S, T}, H::GAPGroup) where S <: GAPGroup where T <: GAPGroup
+function preimage(f::GAPGroupHomomorphism, H::GAPGroup)
   H1 = GAP.Globals.PreImage(GapObj(f), GapObj(H))::GapObj
+  return _as_subgroup(domain(f), H1)
+end
+
+function preimage(f::GAPGroupEmbedding, H::GAPGroup)
+  H1 = GAP.Globals.Intersection(GapObj(domain(f)), GapObj(H))::GapObj
   return _as_subgroup(domain(f), H1)
 end
 
@@ -456,7 +729,7 @@ Otherwise throw an exception.
 ```jldoctest
 julia> isomorphism(symmetric_group(3), dihedral_group(6))
 Group homomorphism
-  from Sym(3)
+  from symmetric group of degree 3
   to pc group of order 6
 ```
 """
@@ -464,6 +737,20 @@ function isomorphism(G::GAPGroup, H::GAPGroup)
   mp = GAP.Globals.IsomorphismGroups(GapObj(G), GapObj(H))::GapObj
   @req mp !== GAP.Globals.fail "the groups are not isomorphic"
   return GAPGroupHomomorphism(G, H, mp)
+end
+
+function isomorphism(G::GAPGroup, A::FinGenAbGroup)
+  @req is_abelian(G) "the groups are not isomorphic"
+  map2 = isomorphism(PcGroup, A)
+  map1 = isomorphism(G, codomain(map2))
+  return compose(map1, inv(map2))
+end
+
+function isomorphism(A::FinGenAbGroup, G::GAPGroup)
+  @req is_abelian(G) "the groups are not isomorphic"
+  map1 = isomorphism(PcGroup, A)
+  map2 = isomorphism(codomain(map1), G)
+  return compose(map1, map2)
 end
 
 function isomorphism(G::GAPGroup, H::MultTableGroup)
@@ -540,7 +827,10 @@ end
 
 for T in [PermGroup, SubFPGroup, SubPcGroup]
   @eval begin
-    isomorphism(::Type{$T}, G::$T) = _isomorphism_same_type(G, false)
+    function isomorphism(::Type{$T}, G::$T; on_gens::Bool = false)
+      on_gens && error("only `on_gens = false` is supported for `isomorphism(::Type{$T}, G::$T)`")
+      return _isomorphism_same_type(G, on_gens)
+    end
   end
 end
 
@@ -549,15 +839,6 @@ for T in [FPGroup, PcGroup]
     isomorphism(::Type{$T}, G::$T; on_gens::Bool = false) = _isomorphism_same_type(G, on_gens)
   end
 end
-
-function isomorphism(::Type{FinGenAbGroup}, A::FinGenAbGroup)
-   # Known isomorphisms are cached in the attribute `:isomorphisms`.
-   isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, A, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
-   return get!(isos, (FinGenAbGroup, false)) do
-     return identity_map(A)
-   end::AbstractAlgebra.Generic.IdentityMap{FinGenAbGroup}
-end
-
 
 _get_iso_function(::Type{PermGroup}) = GAP.Globals.IsomorphismPermGroup
 
@@ -571,48 +852,16 @@ _get_iso_function(::Type{SubPcGroup}) = GAP.Globals.IsomorphismPcGroup
 _get_iso_function(::Type{SubFPGroup}) = GAP.Globals.IsomorphismFpGroup
 
 
-"""
-    isomorphism(::Type{T}, G::GAPGroup) where T <: Union{SubPcGroup, SubFPGroup, PermGroup}
-    isomorphism(::Type{T}, G::GAPGroup; on_gens=false) where T <: Union{PcGroup, FPGroup}
-
-Return an isomorphism from `G` to a group `H` of type `T`.
-An exception is thrown if no such isomorphism exists.
-
-If `on_gens` is `true` then `gens(G)` is guaranteed to correspond to
-`gens(H)`;
-an exception is thrown if this is not possible.
-
-Isomorphisms are cached in `G`, subsequent calls of `isomorphism` with the
-same `T` (and the same value of `on_gens`) yield identical results.
-
-If only the image of such an isomorphism is needed, use `T(G)`.
-
-# Examples
-```jldoctest
-julia> G = dihedral_group(6)
-Pc group of order 6
-
-julia> iso = isomorphism(PermGroup, G)
-Group homomorphism
-  from pc group of order 6
-  to permutation group of degree 3 and order 6
-
-julia> permutation_group(G)
-Permutation group of degree 3 and order 6
-
-julia> codomain(iso) === ans
-true
-```
-"""
-function isomorphism(::Type{T}, G::GAPGroup) where T <: Union{SubPcGroup, SubFPGroup, PermGroup}
+function isomorphism(::Type{T}, G::GAPGroup; on_gens::Bool=false) where T <: Union{SubPcGroup, SubFPGroup, PermGroup}
+   on_gens && error("only `on_gens = false` is supported for `isomorphism(::Type{<:Union{SubPcGroup, SubFPGroup, PermGroup}}, G::GAPGroup)`")
    # Known isomorphisms are cached in the attribute `:isomorphisms`.
    isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, G, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
-   return get!(isos, (T, false)) do
+   return get!(isos, (T, on_gens)) do
      fun = _get_iso_function(T)
      f = fun(GapObj(G))::GapObj
      @req f !== GAP.Globals.fail "Could not convert group into a group of type $T"
      H = T(GAPWrap.ImagesSource(f))
-# TODO: remove the next line once GAP 4.13.0 is available in Oscar
+# TODO: remove the next line once GAP 4.13.0 is available in Oscar -> still broken in GAP 4.14.0
      GAP.Globals.UseIsomorphismRelation(GapObj(G), GapObj(H))
      return GAPGroupHomomorphism(G, H, f)
    end::GAPGroupHomomorphism{typeof(G), T}
@@ -643,8 +892,6 @@ function isomorphism(::Type{FPGroup}, G::GAPGroup; on_gens::Bool=false)
      end
      @req f !== GAP.Globals.fail "Could not convert group into a group of type FPGroup"
      H = FPGroup(GAPWrap.ImagesSource(f))
-# TODO: remove the next line once GAP 4.13.0 is available in Oscar
-     GAP.Globals.UseIsomorphismRelation(GapObj(G), GapObj(H))
      return GAPGroupHomomorphism(G, H, f)
    end::GAPGroupHomomorphism{typeof(G), FPGroup}
 end
@@ -683,7 +930,7 @@ function isomorphism(T::Type{PcGroup}, G::GAPGroup; on_gens::Bool=false)
          Cpcgs = GAP.Globals.PcgsByPcSequence(fam, Ggens)::GapObj
          CC = GAP.Globals.PcGroupWithPcgs(Cpcgs)::GapObj
          CCpcgs = GAPWrap.FamilyPcgs(CC)
-         f = GAP.Globals.GroupHomomorphismByImages(GapObj(G), CC, Cpcgs, CCpcgs)::GapObj
+         f = GAPWrap.GroupHomomorphismByImages(GapObj(G), CC, Cpcgs, CCpcgs)
          return GAPGroupHomomorphism(G, T(CC), f)
        else
          f = GAP.Globals.IsomorphismPcpGroup(GapObj(G))::GapObj
@@ -710,7 +957,7 @@ error("do not know how to create a pcp group on given generators in GAP")
            CC = GAP.Globals.PcpGroupByPcp(Cpcgs)::GapObj
            CCpcgs = GAP.Globals.Pcp(CC)::GapObj
          end
-         switch = GAP.Globals.GroupHomomorphismByImages(C, CC, Cpcgs, CCpcgs)::GapObj
+         switch = GAPWrap.GroupHomomorphismByImages(C, CC, Cpcgs, CCpcgs)
          f = GAP.Globals.CompositionMapping(switch, f)::GapObj
        end
      end
@@ -726,10 +973,11 @@ end
 Return a map from `G` to an isomorphic (additive) group of type `FinGenAbGroup`.
 An exception is thrown if `G` is not abelian or not finite.
 """
-function isomorphism(::Type{FinGenAbGroup}, G::GAPGroup)
+function isomorphism(::Type{FinGenAbGroup}, G::GAPGroup; on_gens::Bool=false)
+   on_gens && error("only `on_gens = false` is supported for `isomorphism(::Type{FinGenAbGroup}, G::GAPGroup)`")
    # Known isomorphisms are cached in the attribute `:isomorphisms`.
    isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, G, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
-   return get!(isos, (FinGenAbGroup, false)) do
+   return get!(isos, (FinGenAbGroup, on_gens)) do
      @req is_abelian(G) "the group is not abelian"
      @req is_finite(G) "the group is not finite"
 #T this restriction is not nice
@@ -754,15 +1002,16 @@ function isomorphism(::Type{FinGenAbGroup}, G::GAPGroup)
 end
 
 """
-    isomorphism(::Type{T}, A::FinGenAbGroup) where T <: Union{GAPGroup, FinGenAbGroup}
+    isomorphism(::Type{T}, A::FinGenAbGroup) where T <: GAPGroup
 
 Return an isomorphism from `A` to a group of type `T`.
 An exception is thrown if no such isomorphism exists.
 """
-function isomorphism(::Type{T}, A::FinGenAbGroup) where T <: GAPGroup
+function isomorphism(::Type{T}, A::FinGenAbGroup; on_gens::Bool=false) where T <: GAPGroup
+   on_gens && error("only `on_gens = false` is supported for `isomorphism(::Type{<:GAPGroup}, A::FinGenAbGroup)`")
    # Known isomorphisms are cached in the attribute `:isomorphisms`.
    isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, A, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
-   return get!(isos, (T, false)) do
+   return get!(isos, (T, on_gens)) do
      @assert T != PcGroup "There should be a special method for type PcGroup"
      @assert T != FPGroup "There should be a special method for type FPGroup"
 
@@ -770,7 +1019,7 @@ function isomorphism(::Type{T}, A::FinGenAbGroup) where T <: GAPGroup
      if is_diagonal(rels(A))
        exponents = diagonal(rels(A))
        A2 = A
-       A2_to_A = identity_map(A)
+       A2_to_A = id_hom(A)
      else
        exponents = elementary_divisors(A)
        A2, A2_to_A = snf(A)
@@ -845,10 +1094,11 @@ end
 #
 ################################################################################
 
-function isomorphism(::Type{PcGroup}, A::FinGenAbGroup)
+function isomorphism(::Type{PcGroup}, A::FinGenAbGroup; on_gens::Bool=false)
+   on_gens && error("only `on_gens = false` is supported for `isomorphism(::Type{PcGroup}, A::FinGenAbGroup)`")
    # Known isomorphisms are cached in the attribute `:isomorphisms`.
    isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, A, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
-   return get!(isos, (PcGroup, false)) do
+   return get!(isos, (PcGroup, on_gens)) do
      # find independent generators
      # trivial diagonal entries can get removed by `GAPWrap.AbelianPcpGroup`,
      # thus we cannot simply take the diagonal
@@ -871,7 +1121,7 @@ function isomorphism(::Type{PcGroup}, A::FinGenAbGroup)
          return group_element(G, GAPWrap.PcpElementByExponentsNC(C, exps))
        end
 
-       finv = g -> A2_to_A(A2(_exponent_vector(g)))
+       finv = g -> A2_to_A(A2(exponent_vector(g)))
      else
 #TODO: As soon as https://github.com/gap-packages/polycyclic/issues/88 is fixed,
 #      we can change the code to create a `PcpGroup` in GAP also if the group
@@ -910,17 +1160,18 @@ function isomorphism(::Type{PcGroup}, A::FinGenAbGroup)
          return group_element(G, GAPWrap.LinearCombinationPcgs(Gpcgs, GapObj(v, true)))
        end
 
-       finv = g -> A2_to_A(A2(_exponent_vector(g) * M))
+       finv = g -> A2_to_A(A2(exponent_vector(g) * M))
      end
 
      return GroupIsomorphismFromFunc(A, G, f, finv)
    end::GroupIsomorphismFromFunc{FinGenAbGroup, PcGroup}
 end
 
-function isomorphism(::Type{FPGroup}, A::FinGenAbGroup)
+function isomorphism(::Type{FPGroup}, A::FinGenAbGroup; on_gens::Bool=false)
+   on_gens && error("only `on_gens = false` is supported for `isomorphism(::Type{FPGroup}, A::FinGenAbGroup)`")
    # Known isomorphisms are cached in the attribute `:isomorphisms`.
    isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, A, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
-   return get!(isos, (FPGroup, false)) do
+   return get!(isos, (FPGroup, on_gens)) do
       # Do not call `abelian_group(FPGroup, ...)`,
       # because then we would need an indirection via a group with
       # diagonal relations.
@@ -1028,13 +1279,11 @@ end
 # a presentation of a `FPModule` over a finite field.
 # Note that additively, the given module is an elementary abelian p-group
 # where p is the characteristic.
-# The function guarantees always a correspondence of `gens(M)` and the `gens`
-# value of the codomain of the result,
-# that is, the value of `on_gens` is irrelevant.
 # (This method is needed in the construction of group extensions
 # from information computed by `cohomology_group`.)
-function isomorphism(::Type{T}, M::S; on_gens::Bool=true) where T <: Union{FPGroup, PcGroup} where S <: AbstractAlgebra.FPModule{<:FinFieldElem}
+function isomorphism(::Type{T}, M::S; on_gens::Bool=false) where T <: Union{FPGroup, PcGroup} where S <: AbstractAlgebra.FPModule{<:FinFieldElem}
   # Known isomorphisms are cached in the attribute `:isomorphisms`.
+  on_gens = true # we ignore the on_gens flag, the function will *always* map gens onto gens
   isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, M, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
     return get!(isos, (T, false)) do
       k = base_ring(M)
@@ -1072,7 +1321,7 @@ function isomorphism(::Type{T}, M::S; on_gens::Bool=true) where T <: Union{FPGro
       end
 
       # group to module
-      gap_to_julia = function(a::GapObj)
+      function Gap_to_julia(a::GapObj)
         e = GAPWrap.ExtRepOfObj(a)
         z = zeros(ZZRingElem, ngens(M)*degree(k))
         for i=1:2:length(e)
@@ -1081,7 +1330,7 @@ function isomorphism(::Type{T}, M::S; on_gens::Bool=true) where T <: Union{FPGro
           end
         end
         c = elem_type(k)[]
-        for i=1:dim(M)
+        for i=1:vector_space_dim(M)
           push!(c, k(z[(i-1)*degree(k)+1:i*degree(k)]))
         end
         return M(c)
@@ -1091,7 +1340,7 @@ function isomorphism(::Type{T}, M::S; on_gens::Bool=true) where T <: Union{FPGro
         return MapFromFunc(
           M, B,
           y -> PcGroupElem(B, GAPWrap.ObjByExtRep(FB, Julia_to_gap(y))),
-          x -> gap_to_julia(GapObj(x)))
+          x -> Gap_to_julia(GapObj(x)))
       else
         # We need an indirection: First create the word in the free group,
         # then wrap it into an element of the f.p. group.
@@ -1100,50 +1349,75 @@ function isomorphism(::Type{T}, M::S; on_gens::Bool=true) where T <: Union{FPGro
         return MapFromFunc(
           M, B,
           y -> FPGroupElem(B, GAPWrap.ElementOfFpGroup(FB, GAPWrap.ObjByExtRep(FR, Julia_to_gap(y)))),
-          x -> gap_to_julia(GapObj(x)))
+          x -> Gap_to_julia(GapObj(x)))
       end
    end::MapFromFunc{S, T}
 end
 
+function change_group_type_doc(typeCamelCase::String, func_snake_case::String, example_group_show::String)
+  """
+      $(typeCamelCase)(G::T) where T <: Union{Group, FinGenAbGroup}
+      $(func_snake_case)(G::T) where T <: Union{Group, FinGenAbGroup}
 
-"""
-    FPGroup(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    fp_group(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    SubFPGroup(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    sub_fp_group(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    FinGenAbGroup(G::T) where T <: GAPGroup
-    PcGroup(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    pc_group(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    SubPcGroup(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    sub_pc_group(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    PermGroup(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
-    permutation_group(G::T) where T <: Union{GAPGroup, FinGenAbGroup}
+  Return a group of the type `$(typeCamelCase)` that is isomorphic to `G`.
+  An exception is thrown if no such group exists.
+  A `MethodError` is thrown if this particular pair of types is not implemented (yet).
 
-Return a group of the requested type that is isomorphic to `G`.
-If one needs the isomorphism then
-[isomorphism(::Type{T}, G::GAPGroup) where T <: Union{SubPcGroup, PermGroup}](@ref)
-can be used instead.
-"""
-function (::Type{S})(G::T) where {S <: Union{FinGenAbGroup, GAPGroup}, T <: GAPGroup}
-   return codomain(isomorphism(S, G))
+  If one needs the isomorphism then
+  [`isomorphism(::Type{T}, G::Group) where T <: Group`](@ref)
+  can be used instead.
+
+  # Examples
+  ```jldoctest
+  julia> G = dihedral_group(6)
+  Pc group of order 6
+
+  julia> iso = isomorphism($(typeCamelCase), G)
+  Group homomorphism
+    from pc group of order 6
+    to $(lowercasefirst(example_group_show))
+
+  julia> $(func_snake_case)(G)
+  $(example_group_show)
+
+  julia> codomain(iso) === ans
+  true
+  ```
+  """
 end
 
-function (::Type{T})(G::FinGenAbGroup) where T <: GAPGroup
-   return codomain(isomorphism(T, G))
-end
+@doc change_group_type_doc("FPGroup", "fp_group", "Finitely presented group of order 6")
+FPGroup(G::Union{Group, FinGenAbGroup})
+@doc change_group_type_doc("FPGroup", "fp_group", "Finitely presented group of order 6")
+fp_group(G::Union{Group, FinGenAbGroup}) = FPGroup(G)
 
-fp_group(G::T) where {T <: Union{FinGenAbGroup, GAPGroup, MultTableGroup}} = FPGroup(G)
-sub_fp_group(G::T) where {T <: Union{FinGenAbGroup, GAPGroup, MultTableGroup}} = SubFPGroup(G)
-pc_group(G::T) where {T <: Union{FinGenAbGroup, GAPGroup, MultTableGroup}} = PcGroup(G)
-sub_pc_group(G::T) where {T <: Union{FinGenAbGroup, GAPGroup, MultTableGroup}} = SubPcGroup(G)
-permutation_group(G::T) where {T <: Union{FinGenAbGroup, GAPGroup, MultTableGroup}} = PermGroup(G)
+@doc change_group_type_doc("SubFPGroup", "Oscar.sub_fp_group", "Sub-finitely presented group of order 6")
+SubFPGroup(G::Union{Group, FinGenAbGroup})
+@doc change_group_type_doc("SubFPGroup", "Oscar.sub_fp_group", "Sub-finitely presented group of order 6")
+sub_fp_group(G::Union{Group, FinGenAbGroup}) = SubFPGroup(G)
+
+@doc change_group_type_doc("PcGroup", "pc_group", "Pc group of order 6")
+PcGroup(G::Union{Group, FinGenAbGroup})
+@doc change_group_type_doc("PcGroup", "pc_group", "Pc group of order 6")
+pc_group(G::Union{Group, FinGenAbGroup}) = PcGroup(G)
+
+@doc change_group_type_doc("SubPcGroup", "Oscar.sub_pc_group", "Sub-pc group of order 6")
+SubPcGroup(G::Union{Group, FinGenAbGroup})
+@doc change_group_type_doc("SubPcGroup", "Oscar.sub_pc_group", "Sub-pc group of order 6")
+sub_pc_group(G::Union{Group, FinGenAbGroup}) = SubPcGroup(G)
+
+@doc change_group_type_doc("PermGroup", "permutation_group", "Permutation group of degree 3 and order 6")
+PermGroup(G::Union{Group, FinGenAbGroup})
+@doc change_group_type_doc("PermGroup", "permutation_group", "Permutation group of degree 3 and order 6")
+permutation_group(G::Union{Group, FinGenAbGroup}) = PermGroup(G)
 
 # Now for MultTableGroup
 
-function isomorphism(::Type{T}, A::MultTableGroup) where T <: GAPGroup
+function isomorphism(::Type{T}, A::MultTableGroup; on_gens::Bool=false) where T <: GAPGroup
+   on_gens && error("only `on_gens = false` is supported for `isomorphism(::Type{<:GAPGroup}, A::MultTableGroup)`")
    # Known isomorphisms are cached in the attribute `:isomorphisms`.
    isos = get_attribute!(Dict{Tuple{Type, Bool}, Any}, A, :isomorphisms)::Dict{Tuple{Type, Bool}, Any}
-   return get!(isos, (T, false)) do
+   return get!(isos, (T, on_gens)) do
      S = symmetric_group(order(A))
      gensA = gens(A)
      newgens = elem_type(S)[]
@@ -1189,10 +1463,6 @@ function isomorphism(::Type{T}, A::MultTableGroup) where T <: GAPGroup
    end::MapFromFunc{MultTableGroup, T}
 end
 
-function (::Type{T})(G::MultTableGroup) where T <: GAPGroup
-   return codomain(isomorphism(T, G))
-end
-
 
 """
     simplified_fp_group(G::FPGroup)
@@ -1217,10 +1487,6 @@ Finitely presented group of infinite order
 function simplified_fp_group(G::FPGroup)
    f = GAP.Globals.IsomorphismSimplifiedFpGroup(GapObj(G))
    H = FPGroup(GAPWrap.Image(f))
-   # TODO: remove the next line once https://github.com/gap-system/gap/pull/4810
-   # is deployed to Oscar
-#T do this as soon as GAP.jl guarantees GAP 4.13!
-   GAP.Globals.UseIsomorphismRelation(GapObj(G), GapObj(H))
    return H, GAPGroupHomomorphism(G,H,f)
 end
 
@@ -1239,18 +1505,27 @@ Return the full automorphism group of `G`. If `f` is an object of type
 return the embedding of `f` in `A`.
 
 Groups of automorphisms over a group `G` have parametric type `AutomorphismGroup{T}`, where `T` is the type of `G`. 
+
 # Examples
 ```jldoctest
 julia> S = symmetric_group(3)
-Sym(3)
+Symmetric group of degree 3
 
 julia> typeof(S)
 PermGroup
 
 julia> A = automorphism_group(S)
-Aut( Sym( [ 1 .. 3 ] ) )
+Automorphism group of
+  symmetric group of degree 3
 
 julia> typeof(A)
+AutomorphismGroup{PermGroup}
+
+julia> D = derived_subgroup(A)[1]
+Group of automorphisms of
+  symmetric group of degree 3
+
+julia> typeof(D)
 AutomorphismGroup{PermGroup}
 ```
 
@@ -1259,10 +1534,11 @@ it can be obtained by typing either `f(x)` or `x^f`.
 
 ```jldoctest
 julia> S = symmetric_group(4)
-Sym(4)
+Symmetric group of degree 4
 
 julia> A = automorphism_group(S)
-Aut( Sym( [ 1 .. 4 ] ) )
+Automorphism group of
+  symmetric group of degree 4
 
 julia> x = perm(S,[2,1,4,3])
 (1,2)(3,4)
@@ -1281,10 +1557,11 @@ It is possible to turn an automorphism `f` into a homomorphism by typing `hom(f)
 
 ```jldoctest
 julia> S = symmetric_group(4)
-Sym(4)
+Symmetric group of degree 4
 
 julia> A = automorphism_group(S)
-Aut( Sym( [ 1 .. 4 ] ) )
+Automorphism group of
+  symmetric group of degree 4
 
 julia> f = A[2]
 Pcgs([ (3,4), (2,4,3), (1,4)(2,3), (1,3)(2,4) ]) -> [ (2,3), (2,4,3), (1,3)(2,4), (1,2)(3,4) ]
@@ -1303,18 +1580,19 @@ automorphisms, is shown in Section [Inner_automorphisms](@ref inner_automorphism
 # Examples
 ```jldoctest
 julia> S = symmetric_group(4)
-Sym(4)
+Symmetric group of degree 4
 
 julia> a = perm(S,[2,1,4,3])
 (1,2)(3,4)
 
 julia> f = hom(S,S,x ->x^a)
 Group homomorphism
-  from Sym(4)
-  to Sym(4)
+  from symmetric group of degree 4
+  to symmetric group of degree 4
 
 julia> A = automorphism_group(S)
-Aut( Sym( [ 1 .. 4 ] ) )
+Automorphism group of
+  symmetric group of degree 4
 
 julia> A(f)
 MappingByFunction( Sym( [ 1 .. 4 ] ), Sym( [ 1 .. 4 ] ), <Julia: gap_fun> )
@@ -1355,15 +1633,16 @@ true
 In Oscar it is possible to multiply homomorphisms and automorphisms (whenever it makes sense); in such cases, the output is always a variable of type `GAPGroupHomomorphism{S,T}`.
 ```jldoctest
 julia> S = symmetric_group(4)
-Sym(4)
+Symmetric group of degree 4
 
 julia> A = automorphism_group(S)
-Aut( Sym( [ 1 .. 4 ] ) )
+Automorphism group of
+  symmetric group of degree 4
 
 julia> g = hom(S,S,x->x^S[1])
 Group homomorphism
-  from Sym(4)
-  to Sym(4)
+  from symmetric group of degree 4
+  to symmetric group of degree 4
 
 julia> f = A(g)
 MappingByFunction( Sym( [ 1 .. 4 ] ), Sym( [ 1 .. 4 ] ), <Julia: gap_fun> )
@@ -1373,12 +1652,25 @@ GAPGroupHomomorphism{PermGroup, PermGroup}
 ```
 """
 function automorphism_group(G::GAPGroup)
-  AutGAP = GAP.Globals.AutomorphismGroup(GapObj(G))::GapObj
-  return AutomorphismGroup(AutGAP, G)
+  AutGAP = GAPWrap.AutomorphismGroup(GapObj(G))
+  return AutomorphismGroup(AutGAP, G, true)
 end
 
-function Base.show(io::IO, A::AutomorphismGroup{T}) where T <: GAPGroup
-  print(io, "Aut( "* String(GAP.Globals.StringView(GapObj(A.G))) * " )")
+function Base.show(io::IO,  ::MIME"text/plain", A::AutomorphismGroup{T}) where T <: Union{FinGenAbGroup, GAPGroup}
+  io = pretty(io)
+  str = A.is_known_to_be_full ? "Automorphism group" : "Group of automorphisms"
+  println(io, "$str of", Indent())
+  print(io, Lowercase(), A.G, Dedent())
+end
+
+function Base.show(io::IO, A::AutomorphismGroup{T}) where T <: Union{FinGenAbGroup, GAPGroup}
+  str = A.is_known_to_be_full ? "Automorphism group" : "Group of automorphisms"
+  if is_terse(io)
+    print(io, str)
+  else
+    io = pretty(io)
+    print(io, "$str of ", Lowercase(), A.G)
+  end
 end
 
 """
@@ -1440,8 +1732,8 @@ end
 # We install a method for that.
 Base.in(::GAPGroupHomomorphism, ::AutomorphismGroup{<: GAPGroup}) = false
 
-Base.:*(f::GAPGroupElem{AutomorphismGroup{T}}, g::GAPGroupHomomorphism) where T = hom(f)*g
-Base.:*(f::GAPGroupHomomorphism, g::GAPGroupElem{AutomorphismGroup{T}}) where T = f*hom(g)
+Base.:*(f::GAPGroupElem{AutomorphismGroup{T}}, g::Union{GAPGroupHomomorphism, GAPGroupEmbedding}) where T = hom(f)*g
+Base.:*(f::Union{GAPGroupHomomorphism, GAPGroupEmbedding}, g::GAPGroupElem{AutomorphismGroup{T}}) where T = f*hom(g)
 
 """
     inner_automorphism(g::GAPGroupElem)
