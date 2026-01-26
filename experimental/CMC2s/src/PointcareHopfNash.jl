@@ -37,9 +37,9 @@ function _global_and_local_PHN_for(M::MatElem{<:MPolyRingElem}, t::Integer, f::M
   # APD = absolute_primary_decomposition(modulus(Q))
   # println(APD)
 
-  points = rational_solutions(modulus(Q));
+  points = rational_solutions(ideal(minors(M,1)));
   
-  println("\nLocal PHN-index at rational points:")
+  println("\nLocal PHN-index at rational points of singular locus of X_M:")
   for p in points
     LQ_p, _ = localization(Q, complement_of_point_ideal(base_ring(Q), p))
     println("\t", p, "\t", vector_space_dim(LQ_p))
@@ -53,14 +53,14 @@ function PHN_test_const_pert_C6(upper_bound::Integer)
   t = 2
   pert_factor = QQ(1//10)
 
-  f = 23*x[1,1]+5*x[1,2] + 3*x[1,3] - 5*x[2,1] - 7*x[2,2] + 13*x[2,3] + x[1,1]^2 + x[1,2]^2 + x[1,3]^2 + x[2,1]^2 + x[2,2]^2 + x[2,3]^2
+  f = 2*x[1,1]+5*x[1,2] + 3*x[1,3] - 5*x[2,1] - 7*x[2,2] + 11*x[2,3] #+ x[1,1]^2 + x[1,2]^2 + x[1,3]^2 + x[2,1]^2 + x[2,2]^2 + x[2,3]^2
 
 
   println("Calculating global and local (at rational points) PHN-index for:")
   println("f = ", f)
 
 
-  println("\n\n\nSingularity: Omega")
+  println("\n\n\nSingularity: Omega1")
     M = matrix(copy(x))
     # M[2,3] = x[2,3] - pert_factor^2#*x[2,3]
     _global_and_local_PHN_for(M,t,f)
@@ -69,11 +69,11 @@ function PHN_test_const_pert_C6(upper_bound::Integer)
   println("\n\n\n\nSeries: Omega_{k+1} / Ak^dagger")
   for k in 1:upper_bound
     k_inc = k+1
-    # K,_ = cyclotomic_field(k+1, "ζ_$k_inc}")
-    K = QQ
-    R,x = polynomial_ring(K, :x => (1:2, 1:3))
-    M = matrix(copy(x))
-    M[2,3] = x[1,1] + x[2,3]^(k+1) - pert_factor^(k+1) #*x[2,3]
+    K,_ = cyclotomic_field(k+1, "ζ_$k_inc")
+    # K = QQ
+    R,y = polynomial_ring(K, :x => (1:2, 1:3))
+    M = matrix(copy(y))
+    M[2,3] = y[1,1] + y[2,3]^(k+1) - pert_factor^(k+1) #*x[2,3]
     println("\n\nSingularity: Omega$(k+1) / A$k^dagger")
     _global_and_local_PHN_for(M,t,change_coefficient_ring(K,f))
   end
