@@ -307,6 +307,33 @@ end
   @test tjurina_number(SpaceGerm(spec(R, J), [0,0,0,0,0])) == 4
 end
 
+# show prints (basic)
+# k = rank(Ipres[0]) = 1
+# p = rank(Ipres[1]) = 0
+# k = rank(Im_At_pres[0]) = 1
+# r = rank(Im_At_pres[1]) = 1
+# k = rank(Ipres[0]) = 2
+# p = rank(Ipres[1]) = 1
+# k = rank(Im_At_pres[0]) = 2
+# r = rank(Im_At_pres[1]) = 3
+# k = rank(Ipres[0]) = 3
+# p = rank(Ipres[1]) = 2
+# k = rank(Im_At_pres[0]) = 3
+# r = rank(Im_At_pres[1]) = 7
+# k = rank(Ipres[0]) = 3
+# p = rank(Ipres[1]) = 2
+# k = rank(Im_At_pres[0]) = 3
+# r = rank(Im_At_pres[1]) = 7
+# k = rank(Ipres[0]) = 4
+# p = rank(Ipres[1]) = 4
+# k = rank(Im_At_pres[0]) = 4
+# r = rank(Im_At_pres[1]) = 28
+# k = rank(Ipres[0]) = 6
+# p = rank(Ipres[1]) = 8
+# k = rank(Im_At_pres[0]) = 6
+# r = rank(Im_At_pres[1]) = 85
+
+
 @testset "is_rigid" begin
   A = affine_space(QQ, 3)
   R = coordinate_ring(A);
@@ -340,3 +367,26 @@ end
   J = ideal(R, minors(M, 2))
   @test !is_rigid(SpaceGerm(spec(R, J), [0,0,0,0,0]))
 end
+
+
+# show prints (basic)
+# k = rank(Ipres[0]) = 3
+# p = rank(Ipres[1]) = 2
+# k = rank(Im_At_pres[0]) = 3
+# r = rank(Im_At_pres[1]) = 7
+# k = rank(Ipres[0]) = 3
+# p = rank(Ipres[1]) = 2
+# k = rank(Im_At_pres[0]) = 3
+# r = rank(Im_At_pres[1]) = 7
+# k = rank(Ipres[0]) = 4
+# p = rank(Ipres[1]) = 4
+# k = rank(Im_At_pres[0]) = 4
+# r = rank(Im_At_pres[1]) = 28
+# k = rank(Ipres[0]) = 4
+# p = rank(Ipres[1]) = 4
+# k = rank(Im_At_pres[0]) = 4
+# r = rank(Im_At_pres[1]) = 28
+# k = rank(Ipres[0]) = 6
+# p = rank(Ipres[1]) = 8
+# k = rank(Im_At_pres[0]) = 6
+# r = rank(Im_At_pres[1]) = 85

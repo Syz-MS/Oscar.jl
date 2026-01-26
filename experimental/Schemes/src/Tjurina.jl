@@ -792,7 +792,7 @@ julia> vector_space_basis(T)
  z*e[2]
 ```
 """
-function tjurina_module(X::CompleteIntersectionGerm) 
+@attr SubquoModule function tjurina_module(X::CompleteIntersectionGerm) 
   I = shifted_ideal(defining_ideal(X))
   R = base_ring(I)
   L,_ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))  
@@ -828,7 +828,7 @@ julia> tjurina_number(X)
 5
 ```
 """
-function tjurina_number(X::CompleteIntersectionGerm)
+@attr Union{<:Integer, PosInf} function tjurina_number(X::CompleteIntersectionGerm)
   d = vector_space_dim(tjurina_module(X))
   return d == -1 ? PosInf() : d
 end
@@ -846,59 +846,94 @@ end
     T1_module(X::SpaceGerm)
 
 Return $T^1_{X,p}$-module of infinitinfinitesimal deformations for the space germ `(X,p)` at the point `p`. 
+!!! note
+    For better readability and for saving memory the Tjurina module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
+!!! note
+    When dealing with with a Hypersurface use the type 'HypersurfaceGerm' and the function 'tjurina_algebra' to also receive the algebra structure of the Tjurina module.
 # Examples
 ```jldoctest
 ```
 """
-function T1_module(X::SpaceGerm)
+@attr Tuple{<:SubquoModule, <:SubquoModule, <:ModuleFPHom} function T1_module(X::SpaceGerm)
   # shifting to 0
-  I = Oscar.shifted_ideal(defining_ideal(X))  
-  P_poly = base_ring(I)
+  I_poly = Oscar.shifted_ideal(defining_ideal(X))  
+  P_poly = base_ring(I_poly)
   n = ngens(P_poly)
   P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), n))) 
+  I = P(I_poly)
   # presentation of I:     A
-  #                   P^p --> P^k --> I --> 0     #k is ngens(I)
+  #                   P^p ––> P^k ––> I ––> 0     #k is ngens(I)
   # index:             1       0     -1    -2
-  Ipres = presentation(ideal_as_module(P(I)))
-  # Im(A^T) as R=P/I-module
-  R,_ = quo(P, P(I))
+
+  Ipres = presentation(ideal_as_module(I))
+  # Ires = free_resolution(ideal_as_module(I), length=2)
+  # Ipres = minimize(Ires)
+
+  @show k = rank(Ipres[0])
+  @show p = rank(Ipres[1])
+
+  # Im(A^T) as an R=P/I-module
+  R,_ = quo(P, I)
   At = change_base_ring(R, transpose(matrix(map(Ipres,1))))
   Im_At = image(At)
   # presentation of Im(A^T): 
   # index: 1       0        -1       -2
   #                         R^p 
   #            B1     A^T    U|     
-  #       R^r --> R^k --> Im(A^T) --> 0
+  #       R^r ––> R^k –—> Im(A^T) ––> 0
   #        ^       ^
   #       l \      | Df
-  #          `--- R^n
-  Im_At_pres = presentation(Im_At)
-  B1 = map(Im_At_pres, 1) 
-  Df = hom(FreeMod(R,n), Im_At_pres[0], R.(jacobi_matrix(gens(P(I)))))
+  #          `––– R^n
 
-  T1_as_SubQuo = simplify_light(quo(image(B1)[1], image(Df)[1])[1])[1]   #abstract version from Matthias
+  Im_At_pres = presentation(Im_At)
+  # Im_At_res = free_resolution(Im_At, length=2)
+  # Im_At_pres = minimize(Im_At_res)
+
+  @show k = rank(Im_At_pres[0])
+  @show r = rank(Im_At_pres[1])
+
+  B1 = map(Im_At_pres, 1) 
+  Df = hom(FreeMod(R,n), Im_At_pres[0], change_base_ring(R, jacobian_matrix(gens(I))))
+
+  T1_as_SubQuo = 
+    simplify_light(
+      quo(image(B1)[1], image(Df)[1])[1]
+    )[1]       #abstract version from Matthias
+  
   # Fix for the case when T^1 = 0 and simplify_light removes all generators
-  if is_zero(T1_as_SubQuo)
-    F = free_module(P,0)
-    return T1_as_SubQuo, quo_object(F, sub_object(F, [zero(F)]))
-  end
+  # if is_zero(T1_as_SubQuo)
+  #   F = free_module(P,0)
+  #   return T1_as_SubQuo, quo_object(F, sub_object(F, [zero(F)]))
+  # end
+  
   # Now more explicit representation for versal family following Greuel, Lossen, Shustin
   # Lift to finitly presented R-modul
+
   T1_pres_as_RMod = presentation(T1_as_SubQuo)
+  # T1_res_as_RMod = free_resolution(T1_as_SubQuo, length = 2)
+  # T1_pres_as_RMod = minimize(T1_res_as_RMod)
+  
   M = lift.(matrix(map(T1_pres_as_RMod, 1)))
   rel = image(M)
-  Pr = ambient_module(rel)
-  T1 = quo(Pr, (rel + (P(I)*Pr)[1]))[1]
+  Pr = ambient_free_module(rel)
+
+  @show ngens(rel)
+  @show rank(Pr)
+  @show ngens(I)
+  @show ngens(rel) + rank(Pr)*ngens(I)
+
+  T1 = quo(Pr, (rel + (I*Pr)[1]))[1]
   ##### Wie weit Darstellung vereinfachen???
   #T1_simpler = simplify(T1)[1]   or  #simplify_light(T1)[1]
   #relations(T1_simpler)
 
 
-  return T1_as_SubQuo, T1#_as_SubQuo  or #_simpler
+  return T1_as_SubQuo, T1, B1  #_as_SubQuo  or #_simpler
 
   ##Test
   ###ab hier alt (löschen, wenn fertig)
   T1_as_R_coker = simplify_light(present_as_cokernel(T1_as_SubQuo))[1]
+  # simplify_light(present_as_cokernel(simplify_light(T1_abstr)[1]))[1]
 end
 
 
@@ -911,12 +946,13 @@ function manualT1(X::SpaceGerm)
   Imod,_ = sub(F1, [g*F1[1] for g in gens(I)])
   PmodI,_ = quo(F1, Imod)
   N, m = hom(Imod, PmodI)
-  Df = change_base_ring(P,jacobi_matrix(gens(I)))
+  Df = change_base_ring(P,jacobian_matrix(gens(I)))
   F = ambient_free_module(N)
   spanDf,_ = sub(F, Df)
-  T, map_from_normal_module = quo(N, ambient_representatives_generators(spanDf))
-  return T, map_from_normal_module, m
+  T1, map_from_normal_module = quo(N, ambient_representatives_generators(spanDf))
+  return T1, map_from_normal_module, m
 end
+
 
 
 @doc raw"""
@@ -942,10 +978,11 @@ julia> tjurina_number(X)
 3
 ```
 """
-function tjurina_number(X::SpaceGerm)
+@attr Union{<:Integer, PosInf} function tjurina_number(X::SpaceGerm)
   d = vector_space_dim(T1_module(X)[2])
   return d == -1 ? PosInf() : d
 end
+
 
 
 @doc raw"""
@@ -989,21 +1026,22 @@ julia> is_rigid(Y)
 false
 ```
 """
-is_rigid(X::HypersurfaceGerm) = is_trivial(tjurina_algebra(X))
-is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
-is_rigid(X::SpaceGerm) = is_zero(T1_module(X)[1]) 
+@attr Bool is_rigid(X::HypersurfaceGerm) = is_trivial(tjurina_algebra(X))
+@attr Bool is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
+@attr Bool is_rigid(X::SpaceGerm) = is_zero(T1_module(X)[1]) 
 
 
 
 function T2_module(X::SpaceGerm)
-  I = Oscar.shifted_ideal(defining_ideal(X))  #k is ngens(I)
-  P_poly = base_ring(I)
+  I_poly = Oscar.shifted_ideal(defining_ideal(X))  #k is ngens(I)
+  P_poly = base_ring(I_poly)
   n = ngens(P_poly)
   P,_ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:n])) 
+  I = P(I_poly)
   # presentation of I:     A
-  #                   P^p --> P^k --> I --> 0
+  #                   P^p ––> P^k ––> I ––> 0
   # index:             1       0     -1    -2
-  Ipres = presentation(ideal_as_module(P(I)))
+  Ipres = presentation(ideal_as_module(I))
   # Syz(I) = Im(A) as R=P/I-module
   Syz = image(matrix(map(Ipres,1)))
   #manually constructing the Koszulmodule since the entire Koszulcomplex is not needed
