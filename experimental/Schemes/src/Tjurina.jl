@@ -845,7 +845,7 @@ end
 @doc raw"""
     T1_module(X::SpaceGerm)
 
-Return $T^1_{X,p}$-module of infinitinfinitesimal deformations for the space germ `(X,p)` at the point `p`. 
+Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space germ `(X,p)` at the point `p`. 
 !!! note
     For better readability and for saving memory the Tjurina module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
 !!! note
