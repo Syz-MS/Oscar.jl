@@ -902,11 +902,11 @@ Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space
 end
 
 
-# Matthias Versions, aber vergessene Lokalisierung von mir hinzugefügt
+# Matthias Zachs Versions, aber vergessene Lokalisierung von mir hinzugefügt
 function manualT1(X::SpaceGerm)
   I = Oscar.shifted_ideal(defining_ideal(X))
   P_poly = base_ring(I)
-  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), n)))  
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), ngens(P_poly))))  
   F1 = FreeMod(P, 1)
   Imod,_ = sub(F1, [g*F1[1] for g in gens(I)])
   PmodI,_ = quo(F1, Imod)
@@ -914,8 +914,9 @@ function manualT1(X::SpaceGerm)
   Df = change_base_ring(P,jacobian_matrix(gens(I)))
   F = ambient_free_module(N)
   spanDf,_ = sub(F, Df)
-  T1, map_from_normal_module = quo(N, ambient_representatives_generators(spanDf))
-  return T1, map_from_normal_module, m
+  T1 = SubquoModule(N, ambient_representatives_generators(spanDf))
+  map_from_normal_module = hom(N, T1, gens(T1))
+  return T1, map_from_normal_module, m        # TODO: Bug vdim T1 neq vdim present_as_cokernel(T1) 
 end
 
 
