@@ -855,7 +855,7 @@ Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space
 ```
 """
 @attr Tuple{<:SubquoModule, <:SubquoModule, <:ModuleFPHom} function T1_module(X::SpaceGerm)
-  # shifting to 0
+  # shifting to origin
   I_poly = Oscar.shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
   n = ngens(P_poly)
@@ -864,19 +864,12 @@ Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space
   # presentation of I:     A
   #                   P^p ––> P^k ––> I ––> 0     #k is ngens(I)
   # index:             1       0     -1    -2
-
   Ipres = presentation(ideal_as_module(I))
-  # Ires = free_resolution(ideal_as_module(I), length=2)
-  # Ipres = minimize(Ires)
-
-  @show k = rank(Ipres[0])
-  @show p = rank(Ipres[1])
-
-  # Im(A^T) as an R=P/I-module
+  # Im(A^T) presented as an R=P/I coker
   R,_ = quo(P, I)
   At = change_base_ring(R, transpose(matrix(map(Ipres,1))))
-  Im_At = image(At)
-  # presentation of Im(A^T): 
+  Im_At,_,_ = simplify_light(present_as_cokernel(image(At)))
+  # presentation of Im(A^T) as an R-module: 
   # index: 1       0        -1       -2
   #                         R^p 
   #            B1     A^T    U|     
@@ -885,55 +878,26 @@ Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space
   #       l \      | Df
   #          `––– R^n
 
-  Im_At_pres = presentation(Im_At)
-  # Im_At_res = free_resolution(Im_At, length=2)
-  # Im_At_pres = minimize(Im_At_res)
+  Rk = ambient_free_module(Im_At)
+  Im_B1 = relations(Im_At)
+  Df_matrix = change_base_ring(R, jacobian_matrix(gens(I)))
+  Df = hom(FreeMod(R,n), Rk, Df_matrix)
+  Im_Df = ambient_representatives_generators(image(Df)[1])
 
-  @show k = rank(Im_At_pres[0])
-  @show r = rank(Im_At_pres[1])
-
-  B1 = map(Im_At_pres, 1) 
-  Df = hom(FreeMod(R,n), Im_At_pres[0], change_base_ring(R, jacobian_matrix(gens(I))))
-
-  T1_as_SubQuo = 
-    simplify_light(
-      quo(image(B1)[1], image(Df)[1])[1]
-    )[1]       #abstract version from Matthias
+  T1_as_SubQuo,_,_ = simplify_light(SubquoModule(Rk, Im_B1, Im_Df))
   
-  # Fix for the case when T^1 = 0 and simplify_light removes all generators
-  # if is_zero(T1_as_SubQuo)
-  #   F = free_module(P,0)
-  #   return T1_as_SubQuo, quo_object(F, sub_object(F, [zero(F)]))
-  # end
   
   # Now more explicit representation for versal family following Greuel, Lossen, Shustin
   # Lift to finitly presented R-modul
-
-  T1_pres_as_RMod = presentation(T1_as_SubQuo)
-  # T1_res_as_RMod = free_resolution(T1_as_SubQuo, length = 2)
-  # T1_pres_as_RMod = minimize(T1_res_as_RMod)
+  T1_as_R_coker,_,_ = simplify_light(present_as_cokernel(T1_as_SubQuo))
+  T1_pres_as_RMod = presentation(T1_as_R_coker)
   
   M = lift.(matrix(map(T1_pres_as_RMod, 1)))
   rel = image(M)
   Pr = ambient_free_module(rel)
 
-  @show ngens(rel)
-  @show rank(Pr)
-  @show ngens(I)
-  @show ngens(rel) + rank(Pr)*ngens(I)
-
-  T1 = quo(Pr, (rel + (I*Pr)[1]))[1]
-  ##### Wie weit Darstellung vereinfachen???
-  #T1_simpler = simplify(T1)[1]   or  #simplify_light(T1)[1]
-  #relations(T1_simpler)
-
-
-  return T1_as_SubQuo, T1, B1  #_as_SubQuo  or #_simpler
-
-  ##Test
-  ###ab hier alt (löschen, wenn fertig)
-  T1_as_R_coker = simplify_light(present_as_cokernel(T1_as_SubQuo))[1]
-  # simplify_light(present_as_cokernel(simplify_light(T1_abstr)[1]))[1]
+  T1,tmp = quo(Pr, (rel + (I*Pr)[1]))
+  return T1_as_SubQuo, T1, tmp  #TODO: replace tmp with the right morphism
 end
 
 
