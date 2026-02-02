@@ -884,7 +884,8 @@ Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space
   Df = hom(FreeMod(R,n), Rk, Df_matrix)
   Im_Df = ambient_representatives_generators(image(Df)[1])
 
-  T1_as_SubQuo,_,_ = simplify_light(SubquoModule(Rk, Im_B1, Im_Df))
+  T1_as_SubQuo = SubquoModule(Rk, Im_B1, Im_Df)
+  # T1_as_SubQuo,_,_ = simplify_light(SubquoModule(Rk, Im_B1, Im_Df))
   
   
   # Now more explicit representation for versal family following Greuel, Lossen, Shustin
@@ -892,7 +893,7 @@ Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space
   T1_as_R_coker,_,_ = simplify_light(present_as_cokernel(T1_as_SubQuo))
   T1_pres_as_RMod = presentation(T1_as_R_coker)
   
-  M = lift.(matrix(map(T1_pres_as_RMod, 1)))
+  M = lift.(matrix(map(T1_pres_as_RMod, 1)))     ## TODO: better way for base ring lifting from P=R/I- to R-module?????
   rel = image(M)
   Pr = ambient_free_module(rel)
 
@@ -1008,7 +1009,7 @@ function T2_module(X::SpaceGerm)
   Ipres = presentation(ideal_as_module(I))
   # Syz(I) = Im(A) as R=P/I-module
   Syz = image(matrix(map(Ipres,1)))
-  #manually constructing the Koszulmodule since the entire Koszulcomplex is not needed
+  #manually constructing the Koszul relations since the entire Koszul complex is not needed
   O_Cnk = ambient_module(Syz)
   
   [gen(I,i)*O_Cnk[j] - gen(I,j)*O_Cnk[i] for j in 1:rank(O_Cnk) for i in 1:j-1]
