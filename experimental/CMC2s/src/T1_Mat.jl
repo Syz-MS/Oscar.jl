@@ -3,6 +3,9 @@ export converted_modulus_T1_Gl
 export T1_Gl_module
 export tjurina_Gl_number
 export T1_Gl_basis
+export T1_Gl_sheaf
+export has_only_rigid_singularities
+export non_rigid_locus
 
 function _R_ij(A::MatElem, i::Integer, j::Integer)
   R_ij = zero(A)
@@ -78,3 +81,23 @@ end
 #  ord = invlex(ambient_free_module(S))*negdeglex(base_ring(S))
 
 # matrix(transpose(reshape([S[i] for i in 1:6], 3,2)))
+
+
+
+function T1_Gl_sheaf(M::MatElem{<:MPolyRingElem})
+  S = converted_modulus_T1_Gl(M)
+  F = ambient_free_module(S)
+  T1_Gl_sheaf, _ = quo(F, S)
+  return T1_Gl_sheaf
+end
+
+function has_only_rigid_singularities(M::MatElem{<:MPolyRingElem})
+  return vector_space_dim(T1_Gl_sheaf(M)) == 0
+end
+
+
+function non_rigid_locus(M::MatElem{<:MPolyRingElem}, t::Integer)       #Integer t necessary?
+  T1_Gl = T1_Gl_sheaf(M)
+  Ann_T1_Gl = annihilator(T1_Gl)  #TODO: add radical????? to be able to count points??
+  return AffineScheme(quo(base_ring(Ann_T1_Gl), ideal(minors(M,t)) + Ann_T1_Gl)[1])
+end
