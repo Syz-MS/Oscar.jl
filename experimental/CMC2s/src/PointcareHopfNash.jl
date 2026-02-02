@@ -31,26 +31,27 @@ end
 
 export _global_and_local_PHN_for
 function _global_and_local_PHN_for(M::MatElem{<:MPolyRingElem}, t::Integer, f::MPolyRingElem, dist::MPolyRingElem)
-  f_pert = f + dist
-  f_pert_PHN = global_PHN_index(M,t,f_pert)
-  println("Global PHN-index f+dist: \t", f_pert_PHN)
-  f_PHN = global_PHN_index(M,t,f)
-  println("Global PHN-index f: \t", f_PHN)
-  println("Euler-obstruction f: \t", f_pert_PHN-f_PHN)
+  # f_pert = f + dist
+  # f_pert_PHN = global_PHN_index(M,t,f_pert)
+  # println("Global PHN-index f+dist: \t", f_pert_PHN)
+  # f_PHN = global_PHN_index(M,t,f)
+  # println("Global PHN-index f: \t", f_PHN)
 
-  # Q = _PHN_locus(M,t,f)
-  # println("Global PHN-index: \t", vector_space_dim(Q))
+  # println("Euler-obstruction f: \t", f_pert_PHN-f_PHN)
+
+  Q = _PHN_locus(M,t,f)
+  println("Global PHN-index: \t", vector_space_dim(Q))
   # println("\nAbsolute primary decomposition:")
   # APD = absolute_primary_decomposition(modulus(Q))
   # println(APD)
 
-  # points = rational_solutions(ideal(minors(M,1)));
+  points = rational_solutions(ideal(minors(M,1)));
   
-  # println("\nLocal PHN-index at rational points of singular locus of X_M:")
-  # for p in points
-  #   LQ_p, _ = localization(Q, complement_of_point_ideal(base_ring(Q), p))
-  #   println("\t", p, "\t", vector_space_dim(LQ_p))
-  # end
+  println("\nLocal PHN-index at rational points of singular locus of X_M:")
+  for p in points
+    LQ_p, _ = localization(Q, complement_of_point_ideal(base_ring(Q), p))
+    println("\t", p, "\t", vector_space_dim(LQ_p))
+  end
 end
 
 export PHN_test_const_pert_C6
@@ -77,16 +78,15 @@ function PHN_test_const_pert_C6(upper_bound::Integer)
   println("\n\n\n\nSeries: Omega_{k+1} / Ak^dagger")
   for k in 1:upper_bound
     k_inc = k+1
-    # K,_ = cyclotomic_field(k+1, "ζ_$k_inc")
-    # K = QQ
-    # R,y = polynomial_ring(K, :x => (1:2, 1:3))
-    y = x
+    K,_ = cyclotomic_field(k_inc, "ζ_$k_inc")
+    R,y = polynomial_ring(K, :x => (1:2, 1:3))
+    # y = x
     M = matrix(copy(y))
     M[2,3] = y[1,1] + y[2,3]^(k+1) - pert_factor^(k+1) #*x[2,3]
     println("\n\nSingularity: Omega$(k+1) / A$k^dagger")
     _global_and_local_PHN_for(M,t, 
-      # change_coefficient_ring(K,f), change_coefficient_ring(K,dist)
-      f, dist
+      change_coefficient_ring(K,f), change_coefficient_ring(K,dist)
+      # f, dist
     )
   end
 
@@ -126,11 +126,27 @@ function PHN_test_const_pert_C6(upper_bound::Integer)
 
 
   println("\n\n\n\nSingularity: Q")
-  # K,_ = cyclotomic_field(3, "ζ_3")
-  K = QQ
+  K,_ = cyclotomic_field(3, "ζ_3")
   R,y = polynomial_ring(K, :x => (1:2, 1:3))
   M = matrix(copy(y))
   M[2,3] = y[1,1]^2 + y[1,2]^2 + y[2,3]^3 - pert_factor^3#*x[2,3]
   _global_and_local_PHN_for(M,t, change_coefficient_ring(K,f), change_coefficient_ring(K,dist))
+
+
+  println("\n\n\n\nSeries: S_k,l")
+  for l in 3:upper_bound
+    for k in 2:upper_bound
+    K,_ = cyclotomic_field(l, "ζ_$l")
+    R,y = polynomial_ring(K, :x => (1:2, 1:3))
+    # y = x
+    M = matrix(copy(y))
+    M[2,3] = y[1,1]*y[2,3] + y[1,2]^k + y[2,3]^l - pert_factor^l #*x[2,3]
+    println("\n\nSingularity: S_$k,$l")
+    _global_and_local_PHN_for(M,t, 
+      change_coefficient_ring(K,f), change_coefficient_ring(K,dist)
+      # f, dist
+    )
+    end
+  end
     
 end
