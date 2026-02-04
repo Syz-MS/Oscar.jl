@@ -1010,25 +1010,30 @@ false
 @attr Bool is_rigid(X::SpaceGerm) = is_zero(T1_module(X)[1]) 
 
 
-
+export T2_module
 function T2_module(X::SpaceGerm)
-  I_poly = Oscar.shifted_ideal(defining_ideal(X))  #k is ngens(I)
+  I_poly = Oscar.shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
   n = ngens(P_poly)
   P,_ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:n])) 
-  I = P(I_poly)
+  I = P(I_poly)  #k is ngens(I)
+  R,_ = quo(P,I)
   # presentation of I:     A
   #                   P^p ––> P^k ––> I ––> 0
   # index:             1       0     -1    -2
-  Ipres = presentation(ideal_as_module(I))
-  # Syz(I) = Im(A) as R=P/I-module
-  Syz = image(matrix(map(Ipres,1)))
-  #manually constructing the Koszul relations since the entire Koszul complex is not needed
-  O_Cnk = ambient_module(Syz)
-  
-  [gen(I,i)*O_Cnk[j] - gen(I,j)*O_Cnk[i] for j in 1:rank(O_Cnk) for i in 1:j-1]
-  Kos = SubquoModule(OXk, [gen(I,i)*O_Cnk[j] - gen(I,j)*O_Cnk[i] for j in 1:rank(O_Cnk) for i in 1:j-1])
+  Ipres = present_as_cokernel(ideal_as_module(I))
+  Pk = ambient_free_module(Ipres)
+  # Syz(I) as R=P/I-module
+  Syz = relations(Ipres)
+  #manually constructing the Koszul relations since the entire Koszul complex is not needed  
+  Kos = [gen(I,i)*Pk[j] - gen(I,j)*Pk[i] for j in 1:rank(Pk) for i in 1:j-1]
+
+  SK = SubquoModule(Pk, Syz, Kos)
+  O_Xk,_ = quo(Pk, (I*Pk)[1])
+  iota = hom(SK, O_Xk, O_Xk.(ambient_representatives_generators(SK)))
+  phi = dual(change_base_ring(R, iota)[1])
+  T2 = cokernel(phi)
+
+  return T2
 end
-
-
 
