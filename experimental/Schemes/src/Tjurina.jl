@@ -901,6 +901,19 @@ Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space
   return T1_as_SubQuo, T1, tmp  #TODO: replace tmp with the right morphism
 end
 
+function _lift_base_ring(M::SubquoModule) #TODO: Move to better place
+  M_pres = presentation(M)
+  R = base_ring(M)
+  I = modulus(R)
+  # P = base_ring(M)
+  
+  A = lift.(matrix(map(M_pres, 1))) 
+  rel = image(A)
+  Pr = ambient_free_module(rel)
+
+  M_lifted,_ = quo(Pr, (rel + (I*Pr)[1]))
+  return M_lifted
+end
 
 # Matthias Zachs Versions, aber vergessene Lokalisierung von mir hinzugefügt
 function manualT1(X::SpaceGerm)
