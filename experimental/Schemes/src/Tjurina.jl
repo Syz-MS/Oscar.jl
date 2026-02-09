@@ -1047,7 +1047,7 @@ function T2_module(X::SpaceGerm)
   I_poly = Oscar.shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
   n = ngens(P_poly)
-  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:n])) 
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), n))) 
   I = P(I_poly)  #k is ngens(I)
   R,_ = quo(P,I)
   # presentation of I:     A
