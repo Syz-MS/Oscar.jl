@@ -342,3 +342,31 @@ end
   J = ideal(R, minors(M, 2))
   @test !is_rigid(SpaceGerm(spec(R, J), [0,0,0,0,0]))
 end
+
+@testset "T2_module" begin
+  # rational normal curve in P^4 (shifted) 
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  M = R[x y-1 z-2 u-3; y-1 z-2 u-3 v-4]
+  J = ideal(R, minors(M, 2))
+  X = SpaceGerm(spec(R, J), [0,1,2,3,4])
+  T2 = T2_module(X)
+  @test vector_space_dim(Oscar._lift_base_ring(T2)) == 3
+  # union of two transversal planes
+  R, (x,y,u,v) = QQ[:x,:y,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  X = SpaceGerm(spec(R, I), [0,0,0,0])
+  T2 = T2_module(X)  
+  @test vector_space_dim(Oscar._lift_base_ring(T2)) == 4
+
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  X = SpaceGerm(spec(R, I), [0,0,0,0,0])
+  T2 = T2_module(X)
+  @test dim(annihilator(T2)) == 1
+  # union of a plane with a transversal line
+  R, (x,y,z) = QQ[:x,:y,:z]
+  I = ideal(R, [x*y, x*z])
+  X = SpaceGerm(spec(R, I), [0,0,0])
+  T2 = T2_module(X)
+  @test is_zero(T2)
+end
