@@ -1025,16 +1025,25 @@ function T2_module(X::SpaceGerm)
   #                   P^p ––> P^k ––> I ––> 0
   # index:             1       0     -1    -2
   Ipres = present_as_cokernel(ideal_as_module(I))
-  Pk = ambient_free_module(Ipres)
-  # Syz(I) as R=P/I-module
-  Syz = relations(Ipres)
-  #manually constructing the Koszul relations since the entire Koszul complex is not needed  
-  Kos = [gen(I,i)*Pk[j] - gen(I,j)*Pk[i] for j in 1:rank(Pk) for i in 1:j-1]
 
-  SK = SubquoModule(Pk, Syz, Kos)
-  O_Xk,_ = quo(Pk, (I*Pk)[1])
-  iota = hom(SK, O_Xk, O_Xk.(ambient_representatives_generators(SK)))
-  phi = dual(change_base_ring(R, iota)[1])
+  # Pk = ambient_free_module(Ipres)     # 0.8s - 1.8s
+  # # Syz(I) as R=P/I-module
+  # Syz = relations(Ipres)
+  # #manually constructing the Koszul relations since the entire Koszul complex is not needed  
+  # Kos = elem_type(Pk)[gen(I,i)*Pk[j] - gen(I,j)*Pk[i] for j in 1:rank(Pk) for i in 1:j-1]
+
+  # SyzModKos = SubquoModule(Pk, Syz, Kos)
+  # O_Xk,_ = quo(Pk, (I*Pk)[1])
+  # iota = hom(SyzModKos, O_Xk, O_Xk.(ambient_representatives_generators(SyzModKos)))
+  # phi = dual(change_base_ring(R, iota)[1])
+  # T2 = cokernel(phi)
+
+
+  Pk = ambient_free_module(Ipres)     # 0.5s - 1.4s
+  Syz = SubquoModule(Pk, relations(Ipres))
+  # Not computing Kos, since Kos \subset I*O_X^k
+  iota,_ = change_base_ring(R, hom(Syz, Pk, ambient_representatives_generators(Syz)))
+  phi = dual(iota)
   T2 = cokernel(phi)
 
   return T2
