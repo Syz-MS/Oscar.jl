@@ -845,7 +845,7 @@ end
 @doc raw"""
     T1_module(X::SpaceGerm)
 
-Return the module $T^1_{X,p}$ of infinitinfinitesimal deformations for the space germ `(X,p)` at the point `p`. 
+Return the module $T^1_{X,p}$ of infinitesimal deformations for the space germ `(X,p)` at the point `p`. 
 !!! note
     For better readability and for saving memory the Tjurina module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
 !!! note
@@ -1012,8 +1012,37 @@ false
 @attr Bool is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
 @attr Bool is_rigid(X::SpaceGerm) = is_zero(T1_module(X)[1]) 
 
+#TODO: Adapt docstring
+@doc raw"""
+    tjurina_number(X::SpaceGerm)
 
-export T2_module
+Return the module $T^2_{X,p}$ of obstructions to lifting a deformation of `(X,p)` over a fat point `(T,0)` to a infinitesimal bigger fat point `(T',0)`.
+!!! note
+    For better readability and for saving memory the T2 module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
+# Examples
+```jldoctest
+julia> R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+(Multivariate polynomial ring in 5 variables over QQ, QQMPolyRingElem[x, y, z, u, v])
+
+julia> M = R[x y z u; y z u v]
+[x   y   z   u]
+[y   z   u   v]
+
+julia> X = SpaceGerm(spec(R, ideal(minors(M, 2))), zeros(QQ,5))
+Spectrum
+  of localization
+    of quotient
+      of multivariate polynomial ring in 5 variables x, y, z, u, v
+        over rational field
+      by ideal (x*z - y^2, x*u - y*z, y*u - z^2, x*v - y*u, y*v - z*u, z*v - u^2)
+    at complement of maximal ideal of point (0, 0, 0, 0, 0)
+
+julia> T2 = T2_module(X);
+
+julia> vector_space_dim(Oscar._lift_base_ring(T2))   #TODO: Change when implemented
+3
+```
+"""
 function T2_module(X::SpaceGerm)
   I_poly = Oscar.shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
