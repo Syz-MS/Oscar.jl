@@ -362,7 +362,7 @@ end
   I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
   X = SpaceGerm(spec(R, I), [0,0,0,0,0])
   T2 = T2_module(X)
-  @test dim(annihilator(T2)) == 1
+  @test krull_dim(T2) == 1
   # union of a plane with a transversal line
   R, (x,y,z) = QQ[:x,:y,:z]
   I = ideal(R, [x*y, x*z])
