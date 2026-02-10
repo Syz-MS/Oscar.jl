@@ -574,9 +574,9 @@ function vector_space_dim(M::SubquoModule; check::Bool=true, cached::Bool=true)
   # Per default we assume that the user means the vector space dimension 
   # over the `base_ring` of the ring on which `M` is defined.
   R = base_ring(M)
-  @assert base_ring(R) isa Field "`base_ring` of the ring over which the module is defined is not a field"
+  @assert coefficient_ring(R) isa Field "`coefficient_ring` of the ring over which the module is defined is not a field"
   cached && has_attribute(M, :vector_space_dimension) && return get_attribute(M, :vector_space_dimension)::Union{Int, PosInf}
-  res = vector_space_dim(base_ring(R), M)
+  res = vector_space_dim(coefficient_ring(R), M)
   cached && set_attribute!(M, :vector_space_dimension=>res)
   return res
 end
@@ -589,7 +589,7 @@ end
 # Syntax to be coherent with other methods for `vector_space_dim`.
 function vector_space_dim(kk::Field, M::SubquoModule)
   R = base_ring(M)
-  kk === R || kk === base_ring(R) || error("not implemented over fields different from the ground ring or the `base_ring` thereof")
+  kk === R || kk === coefficient_ring(R) || error("not implemented over fields different from the ground ring or the `coefficient_ring` thereof")
 
   S = base_ring(M)
   F = ambient_free_module(M)
@@ -625,10 +625,15 @@ function _is_finite(kk::Field, M::SubquoModule)
 end
 
 function _is_finite(kk::Field, M::SubquoModule{T}) where {T<:MPolyRingElem{<:FieldElem}}
-  @assert kk === base_ring(base_ring(M)) "not implemented for fields other than the `base_ring` of the `base_ring` of the module"
+  @assert kk === base_ring(base_ring(M)) "not implemented for fields other than the `coefficient_ring` of the `base_ring` of the module"
   is_zero(M) && return true
   !isdefined(M, :quo) && return false
   return has_monomials_on_all_axes(leading_module(M.quo, default_ordering(M)))
+end
+
+function _is_finite(kk::Field, M::SubquoModule{T}) where {T<:MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
+  # @assert kk === coefficient_ring(base_ring(M)) "not implemented for fields other than the `coefficient_ring` of the `base_ring` of the module"
+  return _is_finite(kk, _as_poly_module(M))
 end
 
 function _is_finite(kk::Field, M::SubquoModule{<:FieldElem})
@@ -646,7 +651,7 @@ as a vector space over the `base_ring` `kk` of its `base_ring` `R`.
 function vector_space_basis(M::SubquoModule; cached::Bool=true)
   cached && has_attribute(M, :vector_space_basis) && return get_attribute(M, :vector_space_basis)::Vector{elem_type(M)}
   R = base_ring(M)
-  kk = base_ring(R)
+  kk = coefficient_ring(R)
   result = vector_space_basis(kk, M)
   if cached
     set_attribute!(M, :vector_space_basis=>result)
@@ -681,7 +686,7 @@ function vector_space_basis(kk::Field, M::SubquoModule)
   # in cases different from ``kk`` being the `base_ring` of the `base_ring`
   # For widening the functionality, catch your case here and delegate 
   # to a respective internal method. 
-  kk === base_ring(R) || error("`vector_space_basis` not implemented over fields other than the `base_ring` of the ring over which the module is defined")
+  kk === coefficient_ring(R) || error("`vector_space_basis` not implemented over fields other than the `coefficient_ring` of the ring over which the module is defined")
 
   S = base_ring(M)
   F = ambient_free_module(M)
@@ -717,7 +722,7 @@ function _vector_space_basis(kk::Field, M::SubquoModule{T}) where {T <: MPolyRin
     is_zero(M) || error("vector space basis of an infinite dimensional module can not be computed")
     return elem_type(M)[]
   end
-
+  _is_finite(kk, M) || error("vector space basis of an infinite dimensional module can not be computed")
   I = M.quo
 
   o = default_ordering(M)
@@ -734,6 +739,17 @@ function _vector_space_basis(kk::Field, M::SubquoModule{T}) where {T <: MPolyRin
   end
   return result
 end
+
+### the ungraded case of MPolyQuoRings over a field
+function _vector_space_basis(kk::Field, M::SubquoModule{T}) where {T <: MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
+  R = base_ring(M)
+  @assert kk === coefficient_ring(R) "not implemented for other fields than the coefficients of the underlying polynomial ring"
+  B = _vector_space_basis(kk, _as_poly_module(M))
+  is_empty(B) && return elem_type(M)[]
+  iota = _iso_with_poly_module(M)
+  return iota.(B)
+end
+
 
 function vector_space_dim(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
   return length(vector_space_basis(M, d))
@@ -784,7 +800,7 @@ function vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
   return is_graded(M) ? _vector_space_basis_graded(M, d) : _vector_space_basis(M, d)
 end
 
-function _vector_space_basis(M::SubquoModule, d::FinGenAbGroupElem)
+function _vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
   error("module needs to be graded")
 end
 
