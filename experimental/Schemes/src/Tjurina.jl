@@ -903,21 +903,6 @@ end
 
 
 
-function _lift_base_ring(M::SubquoModule) #TODO: Move to better place
-  M_pres = presentation(M)
-  R = base_ring(M)
-  I = modulus(R)
-  # P = base_ring(M)
-  
-  A = lift.(matrix(map(M_pres, 1))) 
-  rel = image(A)
-  Pr = ambient_free_module(rel)
-
-  M_lifted,_ = quo(Pr, (rel + (I*Pr)[1]))
-  return M_lifted
-end
-
-
 # Matthias Zachs Versions, aber vergessene Lokalisierung von mir hinzugefügt
 function manualT1(X::SpaceGerm)
   I = Oscar.shifted_ideal(defining_ideal(X))
@@ -1076,5 +1061,22 @@ function T2_module(X::SpaceGerm)
   T2 = cokernel(phi)
 
   return T2
+end
+
+
+
+#TODO: Move to better place
+function _lift_base_ring(M::SubquoModule{T}) where {T<:Union{MPolyQuoLocRingElem, MPolyQuoRingElem}}
+  M_pres = presentation(M)
+  R = base_ring(M)
+  I = modulus(R)
+  # P = base_ring(R)
+  
+  A = lift.(matrix(map(M_pres, 1))) 
+  rel = image(A)
+  Pr = ambient_free_module(rel)
+
+  M_pres_lifted,_ = quo(Pr, (rel + (I*Pr)[1]))
+  return M_pres_lifted
 end
 
