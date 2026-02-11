@@ -2019,4 +2019,13 @@ end
   @test vector_space_dimension(V) == 2
   @test inc.(gens(V)) == C
   @test vector_space(V)[1] === V
+
+  # computing basis for infinite dimensional vector space throws error
+  R, (x,y) = QQ[:x,:y]
+  I = ideal(R, x*y)
+  Q,_ = quo(R, I)
+  F = free_module(Q, 2)
+  S = SubquoModule(F, gens(F), [F[1]])
+  # not a finite module over `QQ`
+  @test_throws ErrorException vector_space_basis(S)
 end
