@@ -796,7 +796,7 @@ end
 
 function vector_space_dim(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
   R = base_ring(M)
-  kk = base_ring(R)
+  kk = coefficient_ring(R)
   return vector_space_dim(kk, M, d)
 end
 
@@ -851,12 +851,12 @@ julia> vector_space_basis(M)
 ```
 """
 function vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true)
-  kk = base_ring(base_ring(M))
+  kk = coefficient_ring(base_ring(M))
   return vector_space_basis(kk, M, d; check)
 end
 
 function vector_space_basis(kk::Field, M::SubquoModule, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true)
-  @assert kk === base_ring(base_ring(M)) "not implemented for fields other than the `base_ring` of the `base_ring` of the module"
+  @assert kk === coefficient_ring(base_ring(M)) "not implemented for fields other than the `coefficient_ring` of the `base_ring` of the module"
   return is_graded(M) ? _vector_space_basis_graded(kk, M, d; check) : _vector_space_basis(kk, M, d; check)
 end
 
@@ -866,11 +866,11 @@ function vector_space_basis(M::SubquoModule{T}, d::Union{FinGenAbGroupElem, Int6
 end
 
 function vector_space_basis(kk::Field, M::SubquoModule{T}, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true) where {T<:FieldElem}
-  @assert kk === base_ring(M) "not implemented for fields other than the `baser_ring` of the module" 
+  @assert kk === base_ring(M) "not implemented for fields other than the `base_ring` of the module" 
   return is_graded(M) ? _vector_space_basis_graded(kk, M, d; check) : _vector_space_basis(kk, M, d; check)
 end
 
-function _vector_space_basis(kk::Field, M::SubquoModule, d::FinGenAbGroupElem; check::Bool=true)
+function _vector_space_basis(kk::Field, M::SubquoModule,  d::Union{FinGenAbGroupElem, Int64}; check::Bool=true)
   error("module needs to be graded")
 end
 
