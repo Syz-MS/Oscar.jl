@@ -993,7 +993,10 @@ end
 
 
 # turn a module into a vector space
-function vector_space(M::SubquoModule{T}; check::Bool=false) where {T<:MPolyRingElem{<:FieldElem}}
+function vector_space(M::SubquoModule{T}; check::Bool=false
+  ) where {T<:Union{MPolyRingElem{<:FieldElem}, 
+                    MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
+                    }
   R = base_ring(M)
   kk = coefficient_ring(R)
   return vector_space(ModuleFP, kk, M; check)
@@ -1002,7 +1005,9 @@ end
 function vector_space(
     ::Type{ResType}, M::SubquoModule{T}; 
     check::Bool=false
-  ) where {ResType <: ModuleFP, T<:MPolyRingElem{<:FieldElem}}
+  ) where {ResType <: ModuleFP, T<:Union{MPolyRingElem{<:FieldElem}, 
+                                        MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
+                                        }
   R = base_ring(M)
   kk = coefficient_ring(R)
   return vector_space(ResType, kk, M; check)
@@ -1011,7 +1016,9 @@ end
 function vector_space(
     ::Type{ResType}, kk::Field, M::SubquoModule{T}; 
     check::Bool=false
-  ) where {ResType <: ModuleFP, T<:MPolyRingElem{<:FieldElem}}
+  ) where {ResType <: ModuleFP, T<:Union{MPolyRingElem{<:FieldElem}, 
+                                        MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
+                                        }
   R = base_ring(M)
   @assert kk === coefficient_ring(R) "not implemented for fields other than the `coefficient_ring` of the `base_ring`"
   @check vector_space_dimension(kk, M) < inf "module is not finite dimensional over the coefficient field"
