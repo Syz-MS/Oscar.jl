@@ -680,7 +680,7 @@ end
 
 Return a list of elements in `M` which form a basis of `M` as a vector space over `kk`.
 """
-function vector_space_basis(kk::Field, M::SubquoModule)
+function vector_space_basis(kk::Field, M::SubquoModule; check::Bool=true)
   R = base_ring(M)
   # At the moment we do not support vector space dimensions for modules 
   # in cases different from ``kk`` being the `base_ring` of the `base_ring`
@@ -694,29 +694,31 @@ function vector_space_basis(kk::Field, M::SubquoModule)
   if !((ngens(M) == ngens(F)) && all(repres(v) == e for (v, e) in zip(gens(M), gens(F))))
     pres = presentation(M)
     MM = cokernel(map(pres, 1))
-    B = _vector_space_basis(kk, MM)
+    B = _vector_space_basis(kk, MM; check)
     aug = map(pres, 0)
     return elem_type(M)[aug(pres[0](coordinates(v))) for v in B]
   end
   
   # If execution gets here, `M` is presented.
-  result = is_graded(M) ? _vector_space_basis_graded(kk, M) : _vector_space_basis(kk, M)
+  result = is_graded(M) ? _vector_space_basis_graded(kk, M; check) : _vector_space_basis(kk, M; check)
   return result
 end
 
 # compute a vector space basis over the `base_ring` of the `base_ring`
-function _vector_space_basis(kk::Field, M::SubquoModule)
+function _vector_space_basis(kk::Field, M::SubquoModule; check::Bool=true)
   error("not implemented for modules of type $(typeof(M))")
 end
 
-function _vector_space_basis_graded(kk::Field, M::SubquoModule)
+function _vector_space_basis_graded(kk::Field, M::SubquoModule; check::Bool=true)
   error("not implemented for modules of type $(typeof(M))")
 end
 
 ### the ungraded case of polynomial rings over fields
-function _vector_space_basis(kk::Field, M::SubquoModule{T}) where {T <: MPolyRingElem{<:FieldElem}}
+# This is an internal method which assumes `M` to be presented.
+function _vector_space_basis(kk::Field, M::SubquoModule{T}; check::Bool=true) where {T <: MPolyRingElem{<:FieldElem}}
   R = base_ring(M)
   @assert kk === coefficient_ring(R) "not implemented for other fields than the coefficients of the polynomial ring"
+  @check _is_finite(kk, M) "module is not finite over the given field"
   F = ambient_free_module(M)
   if !isdefined(M, :quo)
     is_zero(M) || error("vector space basis of an infinite dimensional module can not be computed")
@@ -729,13 +731,13 @@ function _vector_space_basis(kk::Field, M::SubquoModule{T}) where {T <: MPolyRin
   LM = leading_module(I, o)
   
   d = 0
-  inc = _vector_space_basis(M, 0)
+  inc = _vector_space_basis(kk, M, 0)
   result = elem_type(M)[]
 
   while !isempty(inc)
     result = vcat(result, inc)
     d = d + 1
-    inc = _vector_space_basis(M, d)
+    inc = _vector_space_basis(kk, M, d)
   end
   return result
 end
@@ -756,7 +758,7 @@ function vector_space_dim(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
 end
 
 @doc raw"""
-    vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
+    vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true)
 
 Let ``R`` be the ring over which ``M`` is defined. We assume ``R`` to be 
 a ``kk``-algebra over some field ``kk``. 
@@ -796,15 +798,22 @@ julia> vector_space_basis(M)
 
 ```
 """
-function vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
-  return is_graded(M) ? _vector_space_basis_graded(M, d) : _vector_space_basis(M, d)
+function vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true)
+  kk = base_ring(base_ring(M))
+  return is_graded(M) ? _vector_space_basis_graded(kk, M, d; check) : _vector_space_basis(kk, M, d; check)
 end
 
-function _vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
+function vector_space_basis(M::SubquoModule{T}, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true) where {T<:FieldElem}
+  kk = base_ring(M)
+  return is_graded(M) ? _vector_space_basis_graded(kk, M, d; check) : _vector_space_basis(kk, M, d; check)
+end
+
+function _vector_space_basis(kk::Field, M::SubquoModule, d::FinGenAbGroupElem; check::Bool=true)
   error("module needs to be graded")
 end
 
-function _vector_space_basis(M::SubquoModule{T}, d::Int64) where {T <: MPolyRingElem{<:FieldElem}}
+function _vector_space_basis(kk::Field, M::SubquoModule{T}, d::Int64; check::Bool=true) where {T <: MPolyRingElem{<:FieldElem}}
+  @check _is_finite(kk, M) "module is not finite over the given field"
   R = base_ring(M)
   F = ambient_free_module(M)
   Mq,_ = sub(F,rels(M))
@@ -816,11 +825,11 @@ function _vector_space_basis(M::SubquoModule{T}, d::Int64) where {T <: MPolyRing
   return [M(mon) for mon in mons if !(mon in LM)]
 end
   
-function _vector_space_basis_graded(M::SubquoModule, d::FinGenAbGroupElem)
+function _vector_space_basis_graded(kk::Field, M::SubquoModule, d::FinGenAbGroupElem; check::Bool=true)
   error("not implemented")
 end
 
-function _vector_space_basis_graded(M::SubquoModule, d::Int64)
+function _vector_space_basis_graded(kk::Field, M::SubquoModule, d::Int64; check::Bool=true)
   error("not implemented")
 end
   
@@ -838,7 +847,9 @@ function vector_space_dim(M::SubquoModule{T}
   return vector_space_dim(quo_object(ambient_free_module(LM),gens(LM)))
 end
 
-function vector_space_dim(M::SubquoModule{T}, d::Int64
+function vector_space_dim(
+    M::SubquoModule{T}, d::Int64;
+    check::Bool=true
   ) where {T<:MPolyLocRingElem{<:Field, <:FieldElem, <:MPolyRing, <:MPolyRingElem, 
                                <:MPolyComplementOfKPointIdeal}}
   F = ambient_free_module(M)
@@ -852,7 +863,7 @@ function vector_space_dim(M::SubquoModule{T}, d::Int64
   return vector_space_dim(quo_object(ambient_free_module(LM),gens(LM)),d)
 end
 
-function vector_space_dim(M::SubquoModule{T}
+function vector_space_dim(M::SubquoModule{T}; check::Bool=true
   ) where {T<:MPolyLocRingElem}
   error("only available in global case and for localization at a point")
 end
@@ -861,41 +872,6 @@ function vector_space_dim(M::SubquoModule{T}, d::Int64
   ) where {T<:MPolyLocRingElem}
   error("only available in global case and for localization at a point")
 end
-
-#=
-function _vector_space_basis(M::SubquoModule{T}, d::Int) where {T<:MPolyRingElem{<:FieldElem}}
-  R = base_ring(M)
-  F = ambient_free_module(M)
-  Mq,_ = sub(F,rels(M))
-
-  o = default_ordering(M)
-  LM = leading_module(Mq,o)
-
-  d = 0
-  vdim = _vector_space_dim(M)
-  all_mons = vector_space_basis(M,0)
-
-  while length(all_mons) < vdim
-    d += 1
-    append!(all_mons, vector_space_basis(M,d))
-  end
-
-  return all_mons
-end
-
-function vector_space_basis(M::SubquoModule,d::Int64)
-  R = base_ring(M)
-  F = ambient_free_module(M)
-  Mq,_ = sub(F,rels(M))
-
-  ambient_representatives_generators(M) == gens(F) || error("not implemented for M/N with non-trivial M")
-
-  o = default_ordering(M)
-  LM = leading_module(Mq,o)
-
-  return [x*e for x in monomials_of_degree(R, d) for e in gens(F) if !(x*e in LM)]
-end
-=#
 
 function vector_space_basis(M::SubquoModule{T}
   ) where {T<:MPolyLocRingElem{<:Field, <:FieldElem, <:MPolyRing, <:MPolyRingElem, 
