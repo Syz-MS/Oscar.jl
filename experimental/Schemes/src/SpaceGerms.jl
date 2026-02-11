@@ -1065,7 +1065,7 @@ end
     milnor_number(X::HypersurfaceGerm)
     milnor_number(X::CompleteIntersectionGerm)
 
-Return the local Milnor number of `(X,p)` at p
+Return the local Milnor number of `(X,p)` at p.
 """
 function milnor_number(X::HypersurfaceGerm)
   return vector_space_dim(milnor_algebra(X))

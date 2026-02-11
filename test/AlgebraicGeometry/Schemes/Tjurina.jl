@@ -4,10 +4,10 @@
   @test 4 == tjurina_number(change_coefficient_ring(GF(2), y^2 - x^3))
   @test 3 == tjurina_number((y^2 - x^2)*(x-1))
   @test PosInf() == tjurina_number((x-1)^2)
-  @test 0 == tjurina_number(AffineScheme(quo(R, ideal(R, one(R)))[1]))
-  @test 10 == tjurina_number(AffineScheme(quo(R, ideal(R, x^5 + x^2*y^2 + y^5))[1]))
-  @test 3 == tjurina_number(AffineScheme(quo(R, ideal(R, x^2 - y^4))[1]))
-  @test PosInf() == tjurina_number(AffineScheme(quo(R, ideal(R, zero(R)))[1]))
+  @test 0 == tjurina_number(spec(R, ideal(R, one(R))))
+  @test 10 == tjurina_number(spec(R, ideal(R, x^5 + x^2*y^2 + y^5)))
+  @test 3 == tjurina_number(spec(R, ideal(R, x^2 - y^4)))
+  @test PosInf() == tjurina_number(spec(R, ideal(R, zero(R))))
 end
 
 @testset "local Tjurina number" begin
@@ -17,10 +17,10 @@ end
   @test 0 == tjurina_number(L((x-3)^9-(y+5)^7))
   @test 7 == tjurina_number(L((x^6 + x*y^2)*(x+23)^12*(y-6)^12))
   @test PosInf() == tjurina_number(L(x^2))
-  @test 12 == tjurina_number(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^4 + y^5))[1]), [0, 0]))
-  @test 0 == tjurina_number(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, one(R)))[1]), [0, 0]))
-  @test 4 == tjurina_number(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, (x-1)^3 + (x-1)*(y-2)^2))[1]), [1, 2]))
-  @test PosInf() == tjurina_number(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^2))[1]), [0, 0]))
+  @test 12 == tjurina_number(HypersurfaceGerm(spec(R, ideal(R, x^4 + y^5)), [0, 0]))
+  @test 0 == tjurina_number(HypersurfaceGerm(spec(R, ideal(R, one(R))), [0, 0]))
+  @test 4 == tjurina_number(HypersurfaceGerm(spec(R, ideal(R, (x-1)^3 + (x-1)*(y-2)^2)), [1, 2]))
+  @test PosInf() == tjurina_number(HypersurfaceGerm(spec(R, ideal(R, x^2)), [0, 0]))
 end
 
 @testset "is_finitely_determined" begin
@@ -44,10 +44,10 @@ end
   @test is_finitely_determined(L(x^2+y+1), :right)
   @test is_finitely_determined(L(x^2+y^2+1))
   @test is_finitely_determined(L(x^2+y^2+1), :right)
-  @test is_finitely_determined(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+y^2))[1]), [0, 0]))  
-  @test is_finitely_determined(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+y^2))[1]), [0, 0]), :right)  
-  @test is_finitely_determined(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 1]))  
-  @test is_finitely_determined(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 1]), :right)  
+  @test is_finitely_determined(HypersurfaceGerm(spec(R, ideal(R, x^3+y^2)), [0, 0]))  
+  @test is_finitely_determined(HypersurfaceGerm(spec(R, ideal(R, x^3+y^2)), [0, 0]), :right)  
+  @test is_finitely_determined(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 1]))  
+  @test is_finitely_determined(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 1]), :right)  
   @test is_finitely_determined(L1((x-1)^2+(y-1)^2))
   @test is_finitely_determined(L1((x-1)^2+(y-1)^2), :right)  
   @test is_finitely_determined(L1((x-1)^2+(y-1)^2+1))
@@ -87,12 +87,12 @@ end
   @test 1 == determinacy_bound(L(x^2+y+1), :right)
   @test 0 == determinacy_bound(L(x^2+y^2+1))
   @test 2 == determinacy_bound(L(x^2+y^2+1), :right)
-  @test 3 == determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+y^2))[1]), [0, 0]))  
-  @test 3 == determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+y^2))[1]), [0, 0]), :right)  
-  @test 8 == determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 0]))  
-  @test 8 == determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 0]), :right) 
-  @test 1 == determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 1]))  
-  @test 1 == determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 1]), :right)  
+  @test 3 == determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+y^2)), [0, 0]))  
+  @test 3 == determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+y^2)), [0, 0]), :right)  
+  @test 8 == determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 0]))  
+  @test 8 == determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 0]), :right) 
+  @test 1 == determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 1]))  
+  @test 1 == determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 1]), :right)  
   @test 17 == determinacy_bound(L(x^5+y^5))
   @test 17 == determinacy_bound(L(x^5+y^5), :right)
   @test 11 == determinacy_bound(L(x^5+x^2*y^2+y^5))
@@ -136,12 +136,12 @@ end
   @test 1 == sharper_determinacy_bound(L(x^2+y+1), :right)
   @test 0 == sharper_determinacy_bound(L(x^2+y^2+1))
   @test 2 == sharper_determinacy_bound(L(x^2+y^2+1), :right)
-  @test 3 == sharper_determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+y^2))[1]), [0, 0]))  
-  @test 3 == sharper_determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+y^2))[1]), [0, 0]), :right)  
-  @test 5 == sharper_determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 0]))  
-  @test 5 == sharper_determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 0]), :right) 
-  @test 1 == sharper_determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 1]))  
-  @test 1 == sharper_determinacy_bound(HypersurfaceGerm(AffineScheme(quo(R, ideal(R, x^3+x*y^3))[1]), [0, 1]), :right)  
+  @test 3 == sharper_determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+y^2)), [0, 0]))  
+  @test 3 == sharper_determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+y^2)), [0, 0]), :right)  
+  @test 5 == sharper_determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 0]))  
+  @test 5 == sharper_determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 0]), :right) 
+  @test 1 == sharper_determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 1]))  
+  @test 1 == sharper_determinacy_bound(HypersurfaceGerm(spec(R, ideal(R, x^3+x*y^3)), [0, 1]), :right)  
   @test 6 == sharper_determinacy_bound(L(x^5+y^5))
   @test 6 == sharper_determinacy_bound(L(x^5+y^5), :right)
   @test 5 == sharper_determinacy_bound(L(x^5+x^2*y^2+y^5))
@@ -258,11 +258,115 @@ end
   A = affine_space(QQ, 3)
   R = coordinate_ring(A);
   (x,y,z) = gens(R);
-  X = CompleteIntersectionGerm(spec(quo(R,ideal(R,[x^2+y^2+z^2, x^2+2*y^2+3*z^2]))[1]), [0,0,0])
+  IX = ideal(R, [x^2+y^2+z^2, x^2+2*y^2+3*z^2])
+  X = CompleteIntersectionGerm(spec(R, IX), [0,0,0])
   @test tjurina_number(X) == 5
-  S = spec(quo(R,ideal(R,[x^5+y^6+z^7+x*y*z]))[1])
+  IY = ideal(R, [x^2+y^2, x^2+2*y^2])
+  Y = CompleteIntersectionGerm(spec(R, IY), [0,0,0])
+  @test tjurina_number(Y) == PosInf() 
+  IZ = ideal(R, [x^2+y^3, y^3+z^2])
+  Z = CompleteIntersectionGerm(spec(R, IZ), [0,0,0])
+  @test tjurina_number(Z) == 9
+  # test for HypersurfaceGerm as CompleteIntersectionGerm
+  IS = ideal(R, x^5+y^6+z^7+x*y*z)
+  S = spec(R, IS)
   @test tjurina_number(HypersurfaceGerm(S, [0,0,0])) == tjurina_number(CompleteIntersectionGerm(S, [0,0,0]))
-  Y = CompleteIntersectionGerm(spec(quo(R,ideal(R,[x^2+y^2, x^2+2*y^2]))[1]), [0,0,0])
-  @test tjurina_number(Y) == PosInf()  
+  # tests for shift and local
+  IW = ideal(R, [(x-1)*(x^2+y^2-(z-1)^2), (x-1)x*y])
+  W = CompleteIntersectionGerm(spec(R, IW), [0,0,1])
+  @test tjurina_number(W) == 5
+  W2 = CompleteIntersectionGerm(spec(R, IW), [0,1,2])
+  @test tjurina_number(W2) == 0
 end
 
+
+
+@testset "T1_module" begin
+  A = affine_space(QQ, 3)
+  R = coordinate_ring(A);
+  (x,y,z) = gens(R);
+  #HypersurfaceGerm
+  IS = ideal(R, x^5+x*y^2+z^2)
+  S = spec(R, IS)
+  @test tjurina_number(HypersurfaceGerm(S, [0,0,0])) == tjurina_number(SpaceGerm(S, [0,0,0]))  
+  #CompleteIntersectionGerm
+  IT = ideal(R, [x^2+y^3, y^3+z^2])
+  T = spec(R, IT)  
+  @test tjurina_number(CompleteIntersectionGerm(T, [0,0,0])) == tjurina_number(SpaceGerm(T, [0,0,0]))  
+  #SpaceGerms
+  IZ = ideal(R, [x*y, x*z, y*z])
+  Z = spec(R, IZ)
+  @test tjurina_number(SpaceGerm(Z, [0, 0, 0])) == 3
+  @test tjurina_number(SpaceGerm(Z, [23, 0, 0])) == 0
+  # union of two transversal planes
+  R, (x,y,u,v) = QQ[:x,:y,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  @test tjurina_number(SpaceGerm(spec(R, I), [0,0,0,0])) == 0  
+  # rational normal curve in P^4
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  M = R[x y z u; y z u v]
+  J = ideal(R, minors(M, 2))
+  @test tjurina_number(SpaceGerm(spec(R, J), [0,0,0,0,0])) == 4
+end
+
+@testset "is_rigid" begin
+  A = affine_space(QQ, 3)
+  R = coordinate_ring(A);
+  (x,y,z) = gens(R);
+  # for HypersurfaceGerm
+  IX = ideal(R, x^5+x*y^2+z^2)
+  X = spec(R, IX)
+  @test !is_rigid(HypersurfaceGerm(X, [0, 0, 0]))
+  @test is_rigid(HypersurfaceGerm(X, [-1, 0, 1]))
+  IX2 = ideal(R, x+y^3+z^2)
+  @test is_rigid(HypersurfaceGerm(spec(R, IX2), [0, 0, 0]))
+  # for CompleteIntersectionGerm
+  IY = ideal(R, [x^2+y^3, y^3+z^2])
+  Y = spec(R, IY)
+  @test !is_rigid(CompleteIntersectionGerm(Y, [0, 0, 0]))
+  @test is_rigid(CompleteIntersectionGerm(Y, [1, -1, 1]))
+  # for SpaceGerm
+  IZ = ideal(R, [x*y, x*z, y*z])
+  Z = spec(R, IZ)
+  @test !is_rigid(SpaceGerm(Z, [0, 0, 0]))
+  @test is_rigid(SpaceGerm(Z, [23, 0, 0])) 
+  # union of two transversal planes
+  R, (x,y,u,v) = QQ[:x,:y,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  @test is_rigid(SpaceGerm(spec(R, I), [0,0,0,0]))
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  @test is_rigid(SpaceGerm(spec(R, I), [0,0,0,0,0]))
+  # rational normal curve in P^4, non CMC2-example
+  M = R[x y z u; y z u v]
+  J = ideal(R, minors(M, 2))
+  @test !is_rigid(SpaceGerm(spec(R, J), [0,0,0,0,0]))
+end
+
+@testset "T2_module" begin
+  # rational normal curve in P^4 (shifted) 
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  M = R[x y-1 z-2 u-3; y-1 z-2 u-3 v-4]
+  J = ideal(R, minors(M, 2))
+  X = SpaceGerm(spec(R, J), [0,1,2,3,4])
+  T2 = T2_module(X)
+  @test vector_space_dim(Oscar._lift_base_ring(T2)) == 3
+  # union of two transversal planes
+  R, (x,y,u,v) = QQ[:x,:y,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  X = SpaceGerm(spec(R, I), [0,0,0,0])
+  T2 = T2_module(X)  
+  @test vector_space_dim(Oscar._lift_base_ring(T2)) == 4
+
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  X = SpaceGerm(spec(R, I), [0,0,0,0,0])
+  T2 = T2_module(X)
+  @test krull_dim(T2) == 1
+  # union of a plane with a transversal line
+  R, (x,y,z) = QQ[:x,:y,:z]
+  I = ideal(R, [x*y, x*z])
+  X = SpaceGerm(spec(R, I), [0,0,0])
+  T2 = T2_module(X)
+  @test is_zero(T2)
+end
