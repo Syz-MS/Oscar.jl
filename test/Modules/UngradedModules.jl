@@ -2016,7 +2016,7 @@ end
 
   V, inc = vector_space(T)
   @test V isa FreeMod
-  @test vector_space_dimension(V) == 2
+  @test vector_space_dim(V) == 2
   @test inc.(gens(V)) == C
   @test vector_space(V)[1] === V
 
