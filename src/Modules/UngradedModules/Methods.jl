@@ -539,6 +539,47 @@ end
 ##########################################################################
 ## Functionality for modules happening to be finite dimensional vector
 ## spaces
+#
+# The general user facing signature is 
+#
+#   vector_space[_dimension/_basis](kk::Field, M::ModuleFP; check::Bool)
+#
+# where we assume that either 1) the `base_ring` of `M` is already the 
+# field `kk`, or 2) the `base_ring` `R` of `M` is an algebra over the 
+# field `kk`. Other cases are possible, but must be caught and delegated 
+# to a custom implementation. 
+#
+# For convenience we also allow 
+#
+#   vector_space[_dimension/_basis](M::ModuleFP; check::Bool, cached::Bool=true)
+#
+# which picks the field `kk` according to the above assumptions. Note 
+# that this has the default option to cache the result (as it does not depend 
+# on a second argument `kk` anymore).
+#
+# Internally we need to first make sure that the module is finitely presented, 
+# i.e. that its `.sub` part is actually the whole `ambient_free_module`. Thus 
+# the generic code passes to a presentation and converts the result back if 
+# necessary. 
+#
+# Once we are sure that the module is presented, we delegate to respective 
+# internal methods 
+#
+#   _vector_space[_dimension/_basis](kk::Field, M::ModuleFP; check::Bool)
+#
+# These might still do internal checks, like e.g. finiteness over `kk`.
+#
+# For the non-graded polynomial case there are methods to filter out a 
+# graded part w.r.t the total degree via 
+#
+#   vector_space[_dimension/_basis](kk::Field, M::ModuleFP, d::Int; check::Bool)
+#
+# These will eventually be deprecated to internal methods, but they are part of 
+# the system for now. In the graded case we aim to have 
+#   
+#   vector_space[_dimension/_basis](kk::Field, M::ModuleFP, d::FinGenAbGroupElem; check::Bool)
+#
+# for which there are stubs at the moment, but only partial implementations.
 ##########################################################################
 @doc raw"""
     vector_space_dim(M::SubquoModule)
@@ -576,18 +617,18 @@ function vector_space_dim(M::SubquoModule; check::Bool=true, cached::Bool=true)
   R = base_ring(M)
   @assert coefficient_ring(R) isa Field "`coefficient_ring` of the ring over which the module is defined is not a field"
   cached && has_attribute(M, :vector_space_dimension) && return get_attribute(M, :vector_space_dimension)::Union{Int, PosInf}
-  res = vector_space_dim(coefficient_ring(R), M)
+  res = vector_space_dim(base_ring(R), M; check)
   cached && set_attribute!(M, :vector_space_dimension=>res)
   return res
 end
 
 # If the module's ring is already a field, we compute the dimension over that.
 function vector_space_dim(M::SubquoModule{T}; check::Bool=true, cached::Bool=true) where {T <: FieldElem}
-  return vector_space_dim(base_ring(M), M)
+  return vector_space_dim(base_ring(M), M; check)
 end
 
 # Syntax to be coherent with other methods for `vector_space_dim`.
-function vector_space_dim(kk::Field, M::SubquoModule)
+function vector_space_dim(kk::Field, M::SubquoModule; check::Bool=true)
   R = base_ring(M)
   kk === R || kk === coefficient_ring(R) || error("not implemented over fields different from the ground ring or the `coefficient_ring` thereof")
 
@@ -597,19 +638,19 @@ function vector_space_dim(kk::Field, M::SubquoModule)
   if !((ngens(M) == ngens(F)) && all(repres(v) == e for (v, e) in zip(gens(M), gens(F))))
     pres = presentation(M)
     MM = cokernel(map(pres, 1))
-    return _vector_space_dim(kk, MM)
+    return _vector_space_dim(kk, MM; check)
   end
   # At this point we may assume `M` to be presented
-  return _vector_space_dim(kk, M)
+  return _vector_space_dim(kk, M; check)
 end
 
 # Assumes `M` to be presented
-function _vector_space_dim(kk::Field, M::SubquoModule)
+function _vector_space_dim(kk::Field, M::SubquoModule; check::Bool=true)
   _is_finite(kk, M) || return inf
 
   # The generic implementation just takes the length of a basis. 
   # This might not be efficient, so consider overwriting it in specific cases.
-  return length(vector_space_basis(kk, M))
+  return length(vector_space_basis(kk, M; check))
 end
 
 @doc raw"""
@@ -648,28 +689,28 @@ Assume `M` to be defined over a `kk`-algebra `R` which is not a field.
 Return a list of elements in `M` which form a basis for `M` when considered 
 as a vector space over the `base_ring` `kk` of its `base_ring` `R`.
 """
-function vector_space_basis(M::SubquoModule; cached::Bool=true)
+function vector_space_basis(M::SubquoModule; cached::Bool=true, check::Bool=true)
   cached && has_attribute(M, :vector_space_basis) && return get_attribute(M, :vector_space_basis)::Vector{elem_type(M)}
   R = base_ring(M)
-  kk = coefficient_ring(R)
-  result = vector_space_basis(kk, M)
+  kk = base_ring(R)
+  result = vector_space_basis(kk, M; check)
   if cached
     set_attribute!(M, :vector_space_basis=>result)
   end
   return result
 end
 
-function vector_space_basis(M::SubquoModule{<:FieldElem}; cached::Bool=true)
+function vector_space_basis(M::SubquoModule{<:FieldElem}; cached::Bool=true, check::Bool=true)
   cached && has_attribute(M, :vector_space_basis) && return get_attribute(M, :vector_space_basis)::Vector{elem_type(M)}
   kk = base_ring(M)
-  result = vector_space_basis(kk, M)
+  result = vector_space_basis(kk, M; check)
   if cached
     set_attribute!(M, :vector_space_basis=>result)
   end
   return result
 end
 
-function vector_space_basis(kk::Field, M::SubquoModule{<:FieldElem})
+function vector_space_basis(kk::Field, M::SubquoModule{<:FieldElem}; check::Bool=true)
   kk === base_ring(M) || error("not implemented for other fields than the `base_ring` of the module")
   # TODO: look up the existing implementations of rank and put the relevant things here.
   error("not implemented")
@@ -731,13 +772,13 @@ function _vector_space_basis(kk::Field, M::SubquoModule{T}; check::Bool=true) wh
   LM = leading_module(I, o)
   
   d = 0
-  inc = _vector_space_basis(kk, M, 0)
+  inc = _vector_space_basis(kk, M, 0; check)
   result = elem_type(M)[]
 
   while !isempty(inc)
     result = vcat(result, inc)
     d = d + 1
-    inc = _vector_space_basis(kk, M, d)
+    inc = _vector_space_basis(kk, M, d; check)
   end
   return result
 end
@@ -755,7 +796,18 @@ end
 
 
 function vector_space_dim(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
-  return length(vector_space_basis(M, d))
+  R = base_ring(M)
+  kk = base_ring(R)
+  return vector_space_dim(kk, M, d)
+end
+
+function vector_space_dim(M::SubquoModule{<:FieldElem}, d::Union{FinGenAbGroupElem, Int64})
+  kk = base_ring(M)
+  return vector_space_dim(kk, M, d)
+end
+
+function vector_space_dim(kk::Field, M::SubquoModule, d::Union{FinGenAbGroupElem, Int64})
+  return length(vector_space_basis(kk, M, d))
 end
 
 @doc raw"""
@@ -801,11 +853,21 @@ julia> vector_space_basis(M)
 """
 function vector_space_basis(M::SubquoModule, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true)
   kk = base_ring(base_ring(M))
+  return vector_space_basis(kk, M, d; check)
+end
+
+function vector_space_basis(kk::Field, M::SubquoModule, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true)
+  @assert kk === base_ring(base_ring(M)) "not implemented for fields other than the `base_ring` of the `base_ring` of the module"
   return is_graded(M) ? _vector_space_basis_graded(kk, M, d; check) : _vector_space_basis(kk, M, d; check)
 end
 
 function vector_space_basis(M::SubquoModule{T}, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true) where {T<:FieldElem}
   kk = base_ring(M)
+  return vector_space_basis(kk, M, d; check)
+end
+
+function vector_space_basis(kk::Field, M::SubquoModule{T}, d::Union{FinGenAbGroupElem, Int64}; check::Bool=true) where {T<:FieldElem}
+  @assert kk === base_ring(M) "not implemented for fields other than the `baser_ring` of the module" 
   return is_graded(M) ? _vector_space_basis_graded(kk, M, d; check) : _vector_space_basis(kk, M, d; check)
 end
 
@@ -814,7 +876,6 @@ function _vector_space_basis(kk::Field, M::SubquoModule, d::FinGenAbGroupElem; c
 end
 
 function _vector_space_basis(kk::Field, M::SubquoModule{T}, d::Int64; check::Bool=true) where {T <: MPolyRingElem{<:FieldElem}}
-  @check _is_finite(kk, M) "module is not finite over the given field"
   R = base_ring(M)
   F = ambient_free_module(M)
   Mq,_ = sub(F,rels(M))
