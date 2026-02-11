@@ -765,7 +765,6 @@ function _vector_space_basis(kk::Field, M::SubquoModule{T}; check::Bool=true) wh
     is_zero(M) || error("vector space basis of an infinite dimensional module can not be computed")
     return elem_type(M)[]
   end
-  _is_finite(kk, M) || error("vector space basis of an infinite dimensional module can not be computed")
   I = M.quo
 
   o = default_ordering(M)
