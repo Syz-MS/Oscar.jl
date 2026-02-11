@@ -632,7 +632,7 @@ function _is_finite(kk::Field, M::SubquoModule{T}) where {T<:MPolyRingElem{<:Fie
 end
 
 function _is_finite(kk::Field, M::SubquoModule{T}) where {T<:MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
-  # @assert kk === coefficient_ring(base_ring(M)) "not implemented for fields other than the `coefficient_ring` of the `base_ring` of the module"
+  @assert kk === coefficient_ring(base_ring(M)) "not implemented for fields other than the `coefficient_ring` of the `base_ring` of the module"
   return _is_finite(kk, _as_poly_module(M))
 end
 
@@ -743,10 +743,11 @@ function _vector_space_basis(kk::Field, M::SubquoModule{T}; check::Bool=true) wh
 end
 
 ### the ungraded case of MPolyQuoRings over a field
-function _vector_space_basis(kk::Field, M::SubquoModule{T}) where {T <: MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
+function _vector_space_basis(kk::Field, M::SubquoModule{T}; check::Bool=true) where {T <: MPolyQuoRingElem{<:MPolyRingElem{<:FieldElem}}}
   R = base_ring(M)
   @assert kk === coefficient_ring(R) "not implemented for other fields than the coefficients of the underlying polynomial ring"
-  B = _vector_space_basis(kk, _as_poly_module(M))
+  @check _is_finite(kk, M) "module is not finite over the given field"
+  B = _vector_space_basis(kk, _as_poly_module(M), check=false)
   is_empty(B) && return elem_type(M)[]
   iota = _iso_with_poly_module(M)
   return iota.(B)
