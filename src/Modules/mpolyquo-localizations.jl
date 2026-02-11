@@ -128,13 +128,16 @@ end
 ########################################################################
 # lifting base_ring from MPolyQuoLocRing to MPolyLocRing               #
 ########################################################################
+
+# MPolyQuoLocRingElem{BRT, BRET, RT, RET, MST}) where {BRT, BRET, RT, RET, MST}
+
 #
 ### For a free module F = R^r over R = P/I, this returns a lifting map 
 # to the module P^r/I*P^r. Note that this is an unnatural map since 
 # the latter is an R-module only by accident.
-@attr Any function _lifting_iso(F::FreeMod{T}) where {T<:MPolyQuoRingElem}
-  M = _as_poly_module(F)
-  function my_lift(v::FreeModElem{T}) where {T<:MPolyQuoRingElem}
+@attr Any function _lifting_iso(F::FreeMod{T}) where {T<:MPolyQuoLocRingElem}
+  M = _as_polyloc_module(F)
+  function my_lift(v::FreeModElem{T}) where {T<:MPolyQuoLocRingElem}
     parent(v) === F || error("element does not have the right parent")
     w = elem_type(M)[lift(a)*M[i] for (i, a) in coordinates(v)]
     iszero(length(w)) && return zero(M)
@@ -145,9 +148,9 @@ end
 
 ### For a free module F = R^r over R = P/I, this returns a lifting map 
 # to the module P^r. Note that this is not a homomorphism of modules. 
-@attr Any function _lifting_map(F::FreeMod{T}) where {T<:MPolyQuoRingElem}
-  FP = _poly_module(F)
-  function my_lift(v::FreeModElem{T}) where {T<:MPolyQuoRingElem}
+@attr Any function _lifting_map(F::FreeMod{T}) where {T<:MPolyQuoLocRingElem}
+  FP = _polyloc_module(F)
+  function my_lift(v::FreeModElem{T}) where {T<:MPolyQuoLocRingElem}
     parent(v) === F || error("element does not have the right parent")
     w = [lift(a)*FP[i] for (i, a) in coordinates(v)]
     iszero(length(w)) && return zero(FP)
@@ -158,9 +161,9 @@ end
 
 ### To a free module over R = P/I, return the free module over R 
 # in the same number of generators
-@attr FreeMod{T} function _poly_module(F::FreeMod{MPolyQuoRingElem{T}}) where {T}
+@attr FreeMod{<:MPolyLocRingElem{BRT, BRET, RT, RET, MST}} function _polyloc_module(F::FreeMod{MPolyQuoLocRingElem{BRT, BRET, RT, RET, MST}}) where {BRT, BRET, RT, RET, MST}
   R = base_ring(F)
-  P = base_ring(R) # the polynomial ring
+  P = localized_ring(R) # the polyloc ring
   r = rank(F)
   FP = FreeMod(P, r) 
   return FP
@@ -168,17 +171,17 @@ end
 
 ### Return the canonical projection FP -> F from the P-module FP to the 
 # R-module F.
-@attr FreeModuleHom{FreeMod{T}, FreeMod{MPolyQuoRingElem{T}}, MPolyQuoRing{T}} function _poly_module_restriction(F::FreeMod{MPolyQuoRingElem{T}}) where {T}
+@attr FreeModuleHom{FreeMod{T}, FreeMod{MPolyQuoLocRingElem{T}}, MPolyQuoLocRing{T}} function _polyloc_module_restriction(F::FreeMod{MPolyQuoLocRingElem{T}}) where {T}
   R = base_ring(F)
-  P = base_ring(R)
-  FP = _poly_module(F)
+  P = localized_ring(R)
+  FP = _polyloc_module(F)
   return hom(FP, F, gens(F), R)
 end
 
-### Return the same module, but as a SubquoModule over the polynomial ring
-@attr SubquoModule{T} function _as_poly_module(F::FreeMod{MPolyQuoRingElem{T}}) where {T}
+### Return the same module, but as a SubquoModule over the localized polynomial ring
+@attr SubquoModule{<:MPolyLocRingElem{BRT, BRET, RT, RET, MST}} function _as_polyloc_module(F::FreeMod{MPolyQuoLocRingElem{BRT, BRET, RT, RET, MST}}) where {BRT, BRET, RT, RET, MST}
   R = base_ring(F)
-  P = base_ring(R)
+  P = localized_ring(R)
   I = modulus(R)
   FP = FreeMod(P, rank(F))
   IFP, inc = I*FP
@@ -197,26 +200,26 @@ end
   return M
 end
 
-### Return an isomorphism with _as_poly_module(F)
-@attr Any function _iso_with_poly_module(F::FreeMod{T}) where {T<:MPolyQuoRingElem}
-  M = _as_poly_module(F)
+### Return an isomorphism with _as_polyloc_module(F)
+@attr Any function _iso_with_polyloc_module(F::FreeMod{T}) where {T<:MPolyQuoLocRingElem}
+  M = _as_polyloc_module(F)
   return hom(M, F, gens(F), base_ring(F))
 end
 
 ### Return the preimage of M under the canonical projection P^r -> R^r 
 # for R^r the ambient_free_module of M.
-@attr Any function _poly_module(M::SubModuleOfFreeModule{T}) where {T<:MPolyQuoRingElem}
+@attr Any function _polyloc_module(M::SubModuleOfFreeModule{T}) where {T<:MPolyQuoLocRingElem}
   F = ambient_free_module(M) 
-  FP = _poly_module(F)
+  FP = _polyloc_module(F)
   v = elem_type(FP)[_lifting_map(F)(g) for g in gens(M)] 
   w = elem_type(FP)[f*e for e in gens(FP) for f in gens(modulus(base_ring(M)))]
   MP = SubModuleOfFreeModule(FP, vcat(v, w))
   return MP
 end
 
-@attr SubquoModule{T} function _as_poly_module(M::SubquoModule{MPolyQuoRingElem{T}}) where {T}
+@attr SubquoModule{<:MPolyLocRingElem{BRT, BRET, RT, RET, MST}} function _as_polyloc_module(M::SubquoModule{MPolyQuoLocRingElem{BRT, BRET, RT, RET, MST}}) where {BRT, BRET, RT, RET, MST}
   F = ambient_free_module(M) 
-  FP = _poly_module(F)
+  FP = _polyloc_module(F)
   v = [_lifting_map(F)(g) for g in ambient_representatives_generators(M)] 
   w = [f*e for e in gens(FP) for f in gens(modulus(base_ring(M)))]
   w_ext = vcat(w, elem_type(FP)[_lifting_map(F)(g) for g in relations(M)])
@@ -224,14 +227,14 @@ end
   return MP
 end
 
-@attr SubQuoHom{SubquoModule{T}, SubquoModule{MPolyQuoRingElem{T}}, MPolyQuoRing{T}} function _iso_with_poly_module(F::SubquoModule{MPolyQuoRingElem{T}}) where {T}
-  M = _as_poly_module(F)
+@attr SubQuoHom{SubquoModule{<:MPolyLocRingElem{BRT, BRET, RT, RET, MST}}, SubquoModule{MPolyQuoLocRingElem{BRT, BRET, RT, RET, MST}}, MPolyQuoLocRing{BRT, BRET, RT, RET, MST}} function _iso_with_polyloc_module(F::SubquoModule{MPolyQuoLocRingElem{BRT, BRET, RT, RET, MST}}) where {BRT, BRET, RT, RET, MST}
+  M = _as_polyloc_module(F)
   return hom(M, F, gens(F), base_ring(F))
 end
 
-@attr Any function _lifting_iso(F::SubquoModule{T}) where {T<:MPolyQuoRingElem}
-  M = _as_poly_module(F)
-  function my_lift(v::SubquoModuleElem{T}) where {T<:MPolyQuoRingElem}
+@attr Any function _lifting_iso(F::SubquoModule{T}) where {T<:MPolyQuoLocRingElem}
+  M = _as_polyloc_module(F)
+  function my_lift(v::SubquoModuleElem{T}) where {T<:MPolyQuoLocRingElem}
     parent(v) === F || error("element does not have the right parent")
     w = elem_type(M)[lift(a)*M[i] for (i, a) in coordinates(v)]
     iszero(length(w)) && return zero(M)
