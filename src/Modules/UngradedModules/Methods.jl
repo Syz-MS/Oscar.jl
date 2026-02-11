@@ -613,11 +613,11 @@ julia> vector_space_dim(M)
 """
 function vector_space_dim(M::SubquoModule; check::Bool=true, cached::Bool=true)
   # Per default we assume that the user means the vector space dimension 
-  # over the `base_ring` of the ring on which `M` is defined.
+  # over the `coefficient_ring` of the ring on which `M` is defined.
   R = base_ring(M)
   @assert coefficient_ring(R) isa Field "`coefficient_ring` of the ring over which the module is defined is not a field"
   cached && has_attribute(M, :vector_space_dimension) && return get_attribute(M, :vector_space_dimension)::Union{Int, PosInf}
-  res = vector_space_dim(base_ring(R), M; check)
+  res = vector_space_dim(coefficient_ring(R), M; check)
   cached && set_attribute!(M, :vector_space_dimension=>res)
   return res
 end
@@ -692,7 +692,7 @@ as a vector space over the `base_ring` `kk` of its `base_ring` `R`.
 function vector_space_basis(M::SubquoModule; cached::Bool=true, check::Bool=true)
   cached && has_attribute(M, :vector_space_basis) && return get_attribute(M, :vector_space_basis)::Vector{elem_type(M)}
   R = base_ring(M)
-  kk = base_ring(R)
+  kk = coefficient_ring(R)
   result = vector_space_basis(kk, M; check)
   if cached
     set_attribute!(M, :vector_space_basis=>result)
