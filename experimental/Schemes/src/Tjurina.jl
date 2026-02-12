@@ -829,8 +829,9 @@ julia> tjurina_number(X)
 ```
 """
 @attr Union{<:Integer, PosInf} function tjurina_number(X::CompleteIntersectionGerm)
-  d = vector_space_dim(tjurina_module(X))
-  return d == -1 ? PosInf() : d
+  # d = vector_space_dim(tjurina_module(X))
+  # return d == -1 ? PosInf() : d
+  return vector_space_dim(tjurina_module(X))
 end
 
 
@@ -854,7 +855,8 @@ Return the module $T^1_{X,p}$ of infinitesimal deformations for the space germ `
 ```jldoctest
 ```
 """
-@attr Tuple{<:SubquoModule, <:SubquoModule, <:ModuleFPHom} function T1_module(X::SpaceGerm)
+# @attr Tuple{<:SubquoModule, <:SubquoModule, <:ModuleFPHom} 
+@attr SubquoModule function T1_module(X::SpaceGerm)
   # shifting to origin
   I_poly = Oscar.shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
@@ -888,17 +890,17 @@ Return the module $T^1_{X,p}$ of infinitesimal deformations for the space germ `
   # T1_as_SubQuo,_,_ = simplify_light(SubquoModule(Rk, Im_B1, Im_Df))
   
   
-  # Now more explicit representation for versal family following Greuel, Lossen, Shustin
-  # Lift to finitly presented R-modul
-  T1_as_R_coker,_,_ = simplify_light(present_as_cokernel(T1_as_SubQuo))
-  T1_pres_as_RMod = presentation(T1_as_R_coker)
+  # # Now more explicit representation for versal family following Greuel, Lossen, Shustin
+  # # Lift to finitly presented R-modul
+  # T1_as_R_coker,_,_ = simplify_light(present_as_cokernel(T1_as_SubQuo))
+  # T1_pres_as_RMod = presentation(T1_as_R_coker)
   
-  M = lift.(matrix(map(T1_pres_as_RMod, 1)))     ## TODO: better way for base ring lifting from P=R/I- to R-module?????
-  rel = image(M)
-  Pr = ambient_free_module(rel)
+  # M = lift.(matrix(map(T1_pres_as_RMod, 1)))     ## TODO: better way for base ring lifting from P=R/I- to R-module?????
+  # rel = image(M)
+  # Pr = ambient_free_module(rel)
 
-  T1,tmp = quo(Pr, (rel + (I*Pr)[1]))
-  return T1_as_SubQuo, T1, tmp  #TODO: replace tmp with the right morphism
+  # T1,tmp = quo(Pr, (rel + (I*Pr)[1]))
+  return T1_as_SubQuo #, T1, tmp  #TODO: replace tmp with the right morphism
 end
 
 
@@ -945,10 +947,11 @@ julia> tjurina_number(X)
 3
 ```
 """
-@attr Union{<:Integer, PosInf} function tjurina_number(X::SpaceGerm)
-  d = vector_space_dim(T1_module(X)[2])
-  return d == -1 ? PosInf() : d
-end
+@attr Union{<:Integer, PosInf} tjurina_number(X::SpaceGerm) = vector_space_dim(T1_module(X)[1])
+  # d = vector_space_dim(T1_module(X)[2])
+  # return d == -1 ? PosInf() : d
+#   return vector_space_dim(T1_module(X)[1])
+# end
 
 
 
@@ -1028,7 +1031,7 @@ julia> vector_space_dim(Oscar._lift_base_ring(T2))   #TODO: Change when implemen
 3
 ```
 """
-function T2_module(X::SpaceGerm)
+@attr SubquoModule function T2_module(X::SpaceGerm)
   I_poly = Oscar.shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
   n = ngens(P_poly)

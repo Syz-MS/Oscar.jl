@@ -350,13 +350,13 @@ end
   J = ideal(R, minors(M, 2))
   X = SpaceGerm(spec(R, J), [0,1,2,3,4])
   T2 = T2_module(X)
-  @test vector_space_dim(Oscar._lift_base_ring(T2)) == 3
+  @test vector_space_dim(T2) == 3
   # union of two transversal planes
   R, (x,y,u,v) = QQ[:x,:y,:u,:v]
   I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
   X = SpaceGerm(spec(R, I), [0,0,0,0])
   T2 = T2_module(X)  
-  @test vector_space_dim(Oscar._lift_base_ring(T2)) == 4
+  @test vector_space_dim(T2) == 4
 
   R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
   I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
