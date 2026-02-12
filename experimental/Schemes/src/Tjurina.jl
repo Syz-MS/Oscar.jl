@@ -998,7 +998,7 @@ false
 """
 @attr Bool is_rigid(X::HypersurfaceGerm) = is_trivial(tjurina_algebra(X))
 @attr Bool is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
-@attr Bool is_rigid(X::SpaceGerm) = is_zero(T1_module(X)[1]) 
+@attr Bool is_rigid(X::SpaceGerm) = is_zero(T1_module(X)) 
 
 #TODO: Adapt docstring
 @doc raw"""
