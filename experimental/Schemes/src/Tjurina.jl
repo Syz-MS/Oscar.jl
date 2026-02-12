@@ -947,7 +947,7 @@ julia> tjurina_number(X)
 3
 ```
 """
-@attr Union{<:Integer, PosInf} tjurina_number(X::SpaceGerm) = vector_space_dim(T1_module(X)[1])
+@attr Union{<:Integer, PosInf} tjurina_number(X::SpaceGerm) = vector_space_dim(T1_module(X))
   # d = vector_space_dim(T1_module(X)[2])
   # return d == -1 ? PosInf() : d
 #   return vector_space_dim(T1_module(X)[1])
@@ -1027,7 +1027,7 @@ Spectrum
 
 julia> T2 = T2_module(X);
 
-julia> vector_space_dim(Oscar._lift_base_ring(T2))   #TODO: Change when implemented
+julia> vector_space_dim(T2)
 3
 ```
 """
@@ -1068,7 +1068,7 @@ end
 
 
 
-#TODO: Move to better place
+#TODO: For testing remove later
 function _lift_base_ring(M::SubquoModule{T}) where {T<:Union{MPolyQuoLocRingElem, MPolyQuoRingElem}}
   M_pres = presentation(M)
   R = base_ring(M)
