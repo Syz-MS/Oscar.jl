@@ -5,6 +5,7 @@
 ##        Greuel, Pham: 'Mather-Yau Theorem in Positive Characteristic'
 ##        Boubakri, Greuel, Markwig: 'Invariants of Hypersurface Singularities in Positive Characteristic'
 
+export T2_module
 
 ################################################################################
 
