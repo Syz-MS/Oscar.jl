@@ -895,7 +895,7 @@ Return the module $T^1_{X,p}$ of infinitesimal deformations for the space germ `
   # T1_as_R_coker,_,_ = simplify_light(present_as_cokernel(T1_as_SubQuo))
   # T1_pres_as_RMod = presentation(T1_as_R_coker)
   
-  # M = lift.(matrix(map(T1_pres_as_RMod, 1)))     ## TODO: better way for base ring lifting from P=R/I- to R-module?????
+  # M = lift.(matrix(map(T1_pres_as_RMod, 1)))     ## TODO: better way for base ring lifting from R=P/I- to P-module?????
   # rel = image(M)
   # Pr = ambient_free_module(rel)
 
@@ -1058,7 +1058,7 @@ julia> vector_space_dim(T2)
 
   Pk = ambient_free_module(Ipres)     # 0.5s - 1.4s
   Syz = SubquoModule(Pk, relations(Ipres))
-  # Not computing Kos, since Kos \subset I*O_X^k
+  # Not computing the Koszul relations Kos, since Kos \subset I*O_X^k
   iota,_ = change_base_ring(R, hom(Syz, Pk, ambient_representatives_generators(Syz)))
   phi = dual(iota)
   T2 = cokernel(phi)
