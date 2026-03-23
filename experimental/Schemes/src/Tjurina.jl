@@ -828,10 +828,7 @@ julia> tjurina_number(X)
 5
 ```
 """
-@attr Union{<:Integer, PosInf} tjurina_number(X::CompleteIntersectionGerm) = vector_space_dim(tjurina_module(X))
-  # d = vector_space_dim(tjurina_module(X))
-  # return d == -1 ? PosInf() : d
-# end
+tjurina_number(X::CompleteIntersectionGerm) = vector_space_dim(tjurina_module(X))
 
 
 
@@ -946,12 +943,7 @@ julia> tjurina_number(X)
 3
 ```
 """
-@attr Union{<:Integer, PosInf} tjurina_number(X::SpaceGerm) = vector_space_dim(T1_module(X))
-  # d = vector_space_dim(T1_module(X)[2])
-  # return d == -1 ? PosInf() : d
-#   return vector_space_dim(T1_module(X)[1])
-# end
-
+tjurina_number(X::SpaceGerm) = vector_space_dim(T1_module(X))
 
 
 @doc raw"""
@@ -996,8 +988,9 @@ false
 ```
 """
 @attr Bool is_rigid(X::HypersurfaceGerm) = is_trivial(tjurina_algebra(X))
-@attr Bool is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
-@attr Bool is_rigid(X::SpaceGerm) = is_zero(T1_module(X)) 
+is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
+is_rigid(X::SpaceGerm) = is_zero(T1_module(X)) 
+
 
 #TODO: Adapt docstring
 @doc raw"""
