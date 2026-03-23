@@ -72,6 +72,9 @@ end
 Return the `k`-th local Tjurina algebra of `(X,p)` at `p`. 
 By default computes the local Tjurina algebra (`k=0`) at `p`.
 Higher Tjurina algebras are of interest in positive characteristic.
+!!! note
+    For better readability and for saving memory the Tjurina algebra of the corresponding HypersurfaceGerm shifted to the origin '0' is actually computed and returned.
+
 # Examples
 ```jldoctest
 julia> R,(x,y) = QQ[:x, :y];
@@ -135,8 +138,6 @@ function tjurina_algebra(f::MPolyLocRingElem{<:Any, <:Any, <:Any, <:Any, <:MPoly
   X = HypersurfaceGerm(quo(parent(f), ideal(parent(f), f))[1])
   return tjurina_algebra(X, k)
 end
-
-
 
 
 
@@ -243,12 +244,13 @@ function tjurina_number(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any, <:MPol
   return tjurina_number(X, k)
 end
 
+
+
 ################################################################################
 
 #####                                 Order                                #####
 
 ################################################################################
-
 
 function _order(f::MPolyRingElem)
   !is_zero(f) || return PosInf()
@@ -282,7 +284,6 @@ function order_as_series(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any, <:MPo
   shift, _ = base_ring_shifts(parent(f))
   return _order(shift(numerator(f)))           
 end
-
 
 
 
@@ -334,7 +335,6 @@ function is_finitely_determined(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any
     return tjurina_number(f) != PosInf()
   end
 end
-
 
 
 
@@ -447,8 +447,6 @@ end
 
 
 
-
-
 @doc raw"""
     sharper_determinacy_bound(f::MPolyLocRingElem, equivalence::Symbol = :contact)
 
@@ -554,8 +552,8 @@ function _is_isomorphic_as_K_algebra(A::MPolyQuoLocRing{<:Field, <:Any, <:Any, <
   R == base_ring(B) || error("A and B must have the same base ring")  
   ## shift to origin   
   L, _ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))  
-  A,_ = quo(L, L(Oscar.shifted_ideal(modulus(A))))
-  B,_ = quo(L, L(Oscar.shifted_ideal(modulus(B))))   
+  A,_ = quo(L, L(shifted_ideal(modulus(A))))
+  B,_ = quo(L, L(shifted_ideal(modulus(B))))   
   ## check id isomorphism
   modulus(underlying_quotient(A)) != modulus(underlying_quotient(B)) || return true
   ## basic dimension checks
@@ -596,8 +594,8 @@ function _is_isomorphic_as_K_algebra(A::MPolyQuoLocRing{<:Field, <:Any, <:Any, <
   ## check if isomorphism exists
   S, t = polynomial_ring(coefficient_ring(R), ngens_m_k[1]*length(mB_basis), :t)
   P, iota = change_base_ring(S, R)    
-  I_A = Oscar.shifted_ideal(ideal(L, minimal_generating_set(modulus(A)))) 
-  I_B = ideal(standard_basis(Oscar.shifted_ideal(modulus(B)), ordering = negdeglex(R))) 
+  I_A = shifted_ideal(ideal(L, minimal_generating_set(modulus(A)))) 
+  I_B = ideal(standard_basis(shifted_ideal(modulus(B)), ordering = negdeglex(R))) 
   ## construct homomorphism with parameters
   phi = elem_type(P)[]  
   for i in 0:ngens_m_k[1]-1
@@ -741,7 +739,6 @@ end
 
 
 
-
 ################################################################################
 
 #####                           Tjurina module                             #####
@@ -753,13 +750,18 @@ end
     tjurina_module(X::CompleteIntersectionGerm) 
 
 Return the Tjurina module of the complete intersection germ `(X,p)` at the point `p`.
+!!! note
+    For better readability and for saving memory the Tjurina module of the corresponding CompleteIntersectionGerm shifted to the origin '0' is actually computed and returned.
+!!! note
+    When dealing with with a hypersurface singularity use the type 'HypersurfaceGerm' and the function 'tjurina_algebra' to also receive the algebra structure of the Tjurina module.
+
 # Examples
 ```jldoctest
-julia> R, (x,y,z) = QQ["x","y","z"];
+julia> R, (x,y,z) = QQ[:x,:y,:z];
 
 julia> I = ideal(R, [x^2+y^2-z^2, x*y]);
 
-julia> X = CompleteIntersectionGerm(spec(quo(R, I)[1]), [0,0,0])
+julia> X = CompleteIntersectionGerm(spec(R, I), [0,0,0])
 Spectrum
   of localization
     of quotient
@@ -808,11 +810,11 @@ end
 Return Tjurina number of the complete intersection germ `(X,p)` at the point `p`. 
 # Examples
 ```jldoctest
-julia> R, (x,y,z) = QQ["x","y","z"];
+julia> R, (x,y,z) = QQ[:x,:y,:z];
 
 julia> I = ideal(R, [x^2+y^2-z^2, x*y]);
 
-julia> X = CompleteIntersectionGerm(spec(quo(R, I)[1]), [0,0,0])
+julia> X = CompleteIntersectionGerm(spec(R, I), [0,0,0])
 Spectrum
   of localization
     of quotient
