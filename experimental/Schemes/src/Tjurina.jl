@@ -792,11 +792,12 @@ julia> vector_space_basis(T)
  z*e[2]
 ```
 """
-function tjurina_module(X::CompleteIntersectionGerm) 
-  I = defining_ideal(X)
-  k = ngens(I)
+@attr SubquoModule function tjurina_module(X::CompleteIntersectionGerm) 
+  I = shifted_ideal(defining_ideal(X))
   R = base_ring(I)
-  M = free_module(R, k)
+  L,_ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))  
+  I = L(I)
+  M = free_module(L, ngens(I))
   J = jacobian_matrix(gens(I))
   S = sub(M,J)[1] + (I*M)[1]
   return quo(M, S)[1]
