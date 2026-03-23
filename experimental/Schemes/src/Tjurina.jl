@@ -828,9 +828,257 @@ julia> tjurina_number(X)
 5
 ```
 """
-function tjurina_number(X::CompleteIntersectionGerm)
-  d = vector_space_dim(tjurina_module(X))
-  return d == -1 ? PosInf() : d
+@attr Union{<:Integer, PosInf} tjurina_number(X::CompleteIntersectionGerm) = vector_space_dim(tjurina_module(X))
+  # d = vector_space_dim(tjurina_module(X))
+  # return d == -1 ? PosInf() : d
+# end
+
+
+
+################################################################################
+
+#####                             T^1 module                               #####
+
+################################################################################
+
+
+@doc raw"""
+    T1_module(X::SpaceGerm)
+
+Return the module $T^1_{X,p}$ of infinitesimal deformations for the space germ `(X,p)` at the point `p`. 
+!!! note
+    For better readability and for saving memory the Tjurina module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
+!!! note
+    When dealing with with a Hypersurface use the type 'HypersurfaceGerm' and the function 'tjurina_algebra' to also receive the algebra structure of the Tjurina module.
+# Examples
+```jldoctest
+```
+"""
+# @attr Tuple{<:SubquoModule, <:SubquoModule, <:ModuleFPHom} 
+@attr SubquoModule function T1_module(X::SpaceGerm)
+  # shifting to origin
+  I_poly = Oscar.shifted_ideal(defining_ideal(X))  
+  P_poly = base_ring(I_poly)
+  n = ngens(P_poly)
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), n))) 
+  I = P(I_poly)
+  # presentation of I:     A
+  #                   P^p ––> P^k ––> I ––> 0     #k is ngens(I)
+  # index:             1       0     -1    -2
+  Ipres = presentation(ideal_as_module(I))
+  # Im(A^T) presented as an R=P/I coker
+  R,_ = quo(P, I)
+  At = change_base_ring(R, transpose(matrix(map(Ipres,1))))
+  Im_At,_,_ = simplify_light(present_as_cokernel(image(At)))
+  # presentation of Im(A^T) as an R-module: 
+  # index: 1       0        -1       -2
+  #                         R^p 
+  #            B1     A^T    U|     
+  #       R^r ––> R^k –—> Im(A^T) ––> 0
+  #        ^       ^
+  #       l \      | Df
+  #          `––– R^n
+
+  Rk = ambient_free_module(Im_At)
+  Im_B1 = relations(Im_At)
+  Df_matrix = change_base_ring(R, jacobian_matrix(gens(I)))
+  Df = hom(FreeMod(R,n), Rk, Df_matrix)
+  Im_Df = ambient_representatives_generators(image(Df)[1])
+
+  T1_as_SubQuo = SubquoModule(Rk, Im_B1, Im_Df)
+  # T1_as_SubQuo,_,_ = simplify_light(SubquoModule(Rk, Im_B1, Im_Df))
+  
+  
+  # # Now more explicit representation for versal family following Greuel, Lossen, Shustin
+  # # Lift to finitly presented R-modul
+  # T1_as_R_coker,_,_ = simplify_light(present_as_cokernel(T1_as_SubQuo))
+  # T1_pres_as_RMod = presentation(T1_as_R_coker)
+  
+  # M = lift.(matrix(map(T1_pres_as_RMod, 1)))     ## TODO: better way for base ring lifting from P=R/I- to R-module?????
+  # rel = image(M)
+  # Pr = ambient_free_module(rel)
+
+  # T1,tmp = quo(Pr, (rel + (I*Pr)[1]))
+  return T1_as_SubQuo #, T1, tmp  #TODO: replace tmp with the right morphism
 end
 
+
+
+# Matthias Zachs Versions, aber vergessene Lokalisierung von mir hinzugefügt
+function manualT1(X::SpaceGerm)
+  I = Oscar.shifted_ideal(defining_ideal(X))
+  P_poly = base_ring(I)
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), ngens(P_poly))))  
+  F1 = FreeMod(P, 1)
+  Imod,_ = sub(F1, [g*F1[1] for g in gens(I)])
+  PmodI,_ = quo(F1, Imod)
+  N, m = hom(Imod, PmodI)
+  Df = change_base_ring(P,jacobian_matrix(gens(I)))
+  F = ambient_free_module(N)
+  spanDf,_ = sub(F, Df)
+  T1 = SubquoModule(N, ambient_representatives_generators(spanDf))
+  map_from_normal_module = hom(N, T1, gens(T1))
+  return T1, map_from_normal_module, m        
+end
+
+
+
+@doc raw"""
+    tjurina_number(X::SpaceGerm)
+
+Return Tjurina number of the space germ `(X,p)` at the point `p`. 
+# Examples
+```jldoctest
+julia> R, (x,y,z) = QQ[:x,:y,:z];
+
+julia> I = ideal(R, [x*y, x*z, y*z]);
+
+julia> X = SpaceGerm(spec(R, I), [0,0,0])
+Spectrum
+  of localization
+    of quotient
+      of multivariate polynomial ring in 3 variables x, y, z
+        over rational field
+      by ideal (x*y, x*z, y*z)
+    at complement of maximal ideal of point (0, 0, 0)
+
+julia> tjurina_number(X)
+3
+```
+"""
+@attr Union{<:Integer, PosInf} tjurina_number(X::SpaceGerm) = vector_space_dim(T1_module(X))
+  # d = vector_space_dim(T1_module(X)[2])
+  # return d == -1 ? PosInf() : d
+#   return vector_space_dim(T1_module(X)[1])
+# end
+
+
+
+@doc raw"""
+    is_rigid(X::HypersurfaceGerm)
+    is_rigid(X::CompleteIntersectionGerm)
+    is_rigid(X::SpaceGerm)
+
+Return whether 'X' is a rigid singularity. 
+# Examples
+```jldoctest
+julia> R, (x,y,z) = QQ[:x,:y,:z];
+
+julia> I = ideal(R, [x*z, y*z]);
+
+julia> X = SpaceGerm(spec(R, I), [0,0,0])
+Spectrum
+  of localization
+    of quotient
+      of multivariate polynomial ring in 3 variables x, y, z
+        over rational field
+      by ideal (x*z, y*z)
+    at complement of maximal ideal of point (0, 0, 0)
+
+julia> is_rigid(X)
+true
+
+julia> J = ideal(R, [x^3 + y^5 + z^2])
+Ideal generated by
+  x^3 + y^5 + z^2
+
+julia> Y = HypersurfaceGerm(spec(R, J), [0,0,0])
+Spectrum
+  of localization
+    of quotient
+      of multivariate polynomial ring in 3 variables x, y, z
+        over rational field
+      by ideal (x^3 + y^5 + z^2)
+    at complement of maximal ideal of point (0, 0, 0)
+
+julia> is_rigid(Y)
+false
+```
+"""
+@attr Bool is_rigid(X::HypersurfaceGerm) = is_trivial(tjurina_algebra(X))
+@attr Bool is_rigid(X::CompleteIntersectionGerm) = is_zero(tjurina_module(X))
+@attr Bool is_rigid(X::SpaceGerm) = is_zero(T1_module(X)) 
+
+#TODO: Adapt docstring
+@doc raw"""
+    tjurina_number(X::SpaceGerm)
+
+Return the module $T^2_{X,p}$ of obstructions to lifting a deformation of `(X,p)` over a fat point `(T,0)` to a infinitesimal bigger fat point `(T',0)`.
+!!! note
+    For better readability and for saving memory the T2 module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
+# Examples
+```jldoctest
+julia> R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+(Multivariate polynomial ring in 5 variables over QQ, QQMPolyRingElem[x, y, z, u, v])
+
+julia> M = R[x y z u; y z u v]
+[x   y   z   u]
+[y   z   u   v]
+
+julia> X = SpaceGerm(spec(R, ideal(minors(M, 2))), zeros(QQ,5))
+Spectrum
+  of localization
+    of quotient
+      of multivariate polynomial ring in 5 variables x, y, z, u, v
+        over rational field
+      by ideal (x*z - y^2, x*u - y*z, y*u - z^2, x*v - y*u, y*v - z*u, z*v - u^2)
+    at complement of maximal ideal of point (0, 0, 0, 0, 0)
+
+julia> T2 = T2_module(X);
+
+julia> vector_space_dim(T2)
+3
+```
+"""
+@attr SubquoModule function T2_module(X::SpaceGerm)
+  I_poly = Oscar.shifted_ideal(defining_ideal(X))  
+  P_poly = base_ring(I_poly)
+  n = ngens(P_poly)
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), n))) 
+  I = P(I_poly)  #k is ngens(I)
+  R,_ = quo(P,I)
+  # presentation of I:     A
+  #                   P^p ––> P^k ––> I ––> 0
+  # index:             1       0     -1    -2
+  Ipres = present_as_cokernel(ideal_as_module(I))
+
+  # Pk = ambient_free_module(Ipres)     # 0.8s - 1.8s
+  # # Syz(I) as R=P/I-module
+  # Syz = relations(Ipres)
+  # #manually constructing the Koszul relations since the entire Koszul complex is not needed  
+  # Kos = elem_type(Pk)[gen(I,i)*Pk[j] - gen(I,j)*Pk[i] for j in 1:rank(Pk) for i in 1:j-1]
+
+  # SyzModKos = SubquoModule(Pk, Syz, Kos)
+  # O_Xk,_ = quo(Pk, (I*Pk)[1])
+  # iota = hom(SyzModKos, O_Xk, O_Xk.(ambient_representatives_generators(SyzModKos)))
+  # phi = dual(change_base_ring(R, iota)[1])
+  # T2 = cokernel(phi)
+
+
+  Pk = ambient_free_module(Ipres)     # 0.5s - 1.4s
+  Syz = SubquoModule(Pk, relations(Ipres))
+  # Not computing Kos, since Kos \subset I*O_X^k
+  iota,_ = change_base_ring(R, hom(Syz, Pk, ambient_representatives_generators(Syz)))
+  phi = dual(iota)
+  T2 = cokernel(phi)
+
+  return T2
+end
+
+
+
+#TODO: For testing remove later
+function _lift_base_ring(M::SubquoModule{T}) where {T<:Union{MPolyQuoLocRingElem, MPolyQuoRingElem}}
+  M_pres = presentation(M)
+  R = base_ring(M)
+  I = modulus(R)
+  # P = base_ring(R)
+  
+  A = lift.(matrix(map(M_pres, 1))) 
+  rel = image(A)
+  Pr = ambient_free_module(rel)
+
+  M_pres_lifted,_ = quo(Pr, (rel + (I*Pr)[1]))
+  return M_pres_lifted
+end
 
