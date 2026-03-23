@@ -1052,7 +1052,7 @@ julia> vector_space_dim(T2)
   # O_Xk,_ = quo(Pk, (I*Pk)[1])
   # iota = hom(SyzModKos, O_Xk, O_Xk.(ambient_representatives_generators(SyzModKos)))
   # phi = dual(change_base_ring(R, iota)[1])
-  # T2 = cokernel(phi)
+  # T2, _ = cokernel(phi)
 
 
   Pk = ambient_free_module(Ipres)     # 0.5s - 1.4s
@@ -1060,7 +1060,7 @@ julia> vector_space_dim(T2)
   # Not computing Kos, since Kos \subset I*O_X^k
   iota,_ = change_base_ring(R, hom(Syz, Pk, ambient_representatives_generators(Syz)))
   phi = dual(iota)
-  T2 = cokernel(phi)
+  T2, _ = cokernel(phi)
 
   return T2
 end
