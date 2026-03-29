@@ -60,7 +60,7 @@ Quotient
 ```
 """
 function tjurina_algebra(X::AffineScheme{<:Field,<:MPolyQuoRing})
-  ngens(modulus(OO(X))) == 1 || error("not a hypersurface (or unnecessary generators in specified generating set)")
+  @req ngens(modulus(OO(X))) == 1 "Not a hypersurface (or unnecessary generators in specified generating set)."
   return tjurina_algebra(gen(modulus(OO(X)),1))
 end
 
@@ -93,7 +93,7 @@ Localization
 ```
 """
 function tjurina_algebra(X::HypersurfaceGerm, k::Integer = 0)  
-  k >= 0 || error("Integer must be non-negative.")
+  @req k >= 0 "Integer must be non-negative."
   R = localized_ring(OO(X))
   ## tjurina algebra independent of choice of representative
   ## hence choose a polynomial representative for easier computation
@@ -162,7 +162,7 @@ julia> tjurina_number(f)
 ```
 """
 function tjurina_number(f::MPolyRingElem)
-  isa(coefficient_ring(f), AbstractAlgebra.Field) || error("The polynomial requires a coefficient ring that is a field.")
+  @req isa(coefficient_ring(f), Field) "The polynomial requires a coefficient ring that is a field."
   R = tjurina_algebra(f)
   return dim(modulus(R)) <= 0 ? vector_space_dim(R) : PosInf()
 end
@@ -311,7 +311,7 @@ true
 ```
 """
 function is_finitely_determined(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any, <:MPolyComplementOfKPointIdeal}, equivalence::Symbol = :contact)
-  equivalence == :right || equivalence == :contact || error("Equivalence typ must be ':right' or ':contact'.")
+  @req (equivalence == :right || equivalence == :contact) "Equivalence type must be ':right' or ':contact'."
   !iszero(f) || return false
   ord_f = order_as_series(f)
   ## smooth case, 1-determined
@@ -389,7 +389,7 @@ julia> determinacy_bound(f, :right)
 ```
 """
 function determinacy_bound(f::MPolyLocRingElem, equivalence::Symbol = :contact)
-  equivalence == :right || equivalence == :contact || error("Equivalence typ must be ':right' or ':contact'.")
+  @req equivalence == :right || equivalence == :contact "Equivalence type must be ':right' or ':contact'."
   ord_f = order_as_series(f)
   ## if the order of f is 1, then f is right and contact equivalent to its 1-jet (smooth case)
   ord_f != 1 || return 1
@@ -472,7 +472,7 @@ julia> sharper_determinacy_bound(f, :right)
 ```
 """
 function sharper_determinacy_bound(f::MPolyLocRingElem, equivalence::Symbol = :contact)
-  equivalence == :right || equivalence == :contact || error("Equivalence typ must be ':right' or ':contact'.")
+  @req equivalence == :right || equivalence == :contact "Equivalence type must be ':right' or ':contact'."
   ord_f = order_as_series(f)
   ## if the order of f is 1, then f is right and contact equivalent to its 1-jet (smooth case)
   ord_f != 1 || return 1  
@@ -549,7 +549,7 @@ function _is_isomorphic_as_K_algebra(A::MPolyQuoLocRing{<:Field, <:Any, <:Any, <
                                       B::MPolyQuoLocRing{<:Field, <:Any, <:Any, <:Any, <:MPolyComplementOfKPointIdeal}
 ) 
   R = base_ring(A)
-  R == base_ring(B) || error("A and B must have the same base ring")  
+  @req R == base_ring(B) "A and B must have the same base ring"
   ## shift to origin   
   L, _ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))  
   A,_ = quo(L, L(shifted_ideal(modulus(A))))
@@ -655,7 +655,7 @@ false
 """
 function is_contact_equivalent(f::MPolyLocRingElem, g::MPolyLocRingElem)
   R = base_ring(parent(f))
-  R == base_ring(parent(g)) || error("f and g must have the same MPolyRing as base ring.")
+  @req R == base_ring(parent(g)) "f and g must have the same MPolyRing as base ring."
   ## checks via order
   ## order is invariant under contact equivalence
   ord_f = order_as_series(f)
