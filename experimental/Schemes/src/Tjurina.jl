@@ -73,7 +73,7 @@ Return the `k`-th local Tjurina algebra of `(X,p)` at `p`.
 By default computes the local Tjurina algebra (`k=0`) at `p`.
 Higher Tjurina algebras are of interest in positive characteristic.
 !!! note
-    For better readability and for saving memory the Tjurina algebra of the corresponding HypersurfaceGerm shifted to the origin '0' is actually computed and returned.
+    For better readability and for saving memory the Tjurina algebra of the corresponding HypersurfaceGerm shifted to the origin `0` is actually computed and returned.
 
 # Examples
 ```jldoctest
@@ -295,7 +295,7 @@ end
 @doc raw"""
     is_finitely_determined(f::MPolyLocRingElem{<:Field, <:Any, <:Any, <:Any, <:MPolyComplementOfKPointIdeal}, equivalence::Symbol = :contact)
 
-Return if 'f' is finitely determined with respect to ':right' or ':contact' equivalence.
+Return if `f` is finitely determined with respect to `:right` or `:contact` equivalence.
 By default computes with respect to contact equivalence.
 # Examples
 ```jldoctest
@@ -341,7 +341,7 @@ end
 @doc raw"""
     is_finitely_determined(X::HypersurfaceGerm, equivalence::Symbol = :contact)
 
-Return if the hypersurface germ 'X' is finitely determined with respect to ':right' or ':contact' equivalence. 
+Return if the hypersurface germ `X` is finitely determined with respect to `:right` or `:contact` equivalence. 
 By default computes with respect to contact equivalence.
 # Examples
 ```jldoctest
@@ -369,7 +369,7 @@ end
 @doc raw"""
     determinacy_bound(f::MPolyLocRingElem, equivalence::Symbol = :contact)
 
-Compute some determinacy bound of 'f' with respect to ':right' or ':contact' equivalence.
+Compute some determinacy bound of `f` with respect to `:right` or `:contact` equivalence.
 Return infinity if not finitely determined. 
 By default computes with respect to contact equivalence.
 This computation is based on the Milnor number respectively Tjurina number.
@@ -421,7 +421,7 @@ end
 @doc raw"""
     determinacy_bound(X::HypersurfaceGerm, equivalence::Symbol = :contact)
 
-Compute some determinacy bound of the hypersurface germ 'X' with respect to ':right' or ':contact' equivalence.
+Compute some determinacy bound of the hypersurface germ `X` with respect to `:right` or `:contact` equivalence.
 Return infinity if not finitely determined. 
 By default computes with respect to contact equivalence.
 This computation is based on the Milnor number respectively Tjurina number.
@@ -450,7 +450,7 @@ end
 @doc raw"""
     sharper_determinacy_bound(f::MPolyLocRingElem, equivalence::Symbol = :contact)
 
-Compute some determinacy bound of 'f' with respect to ':right' or ':contact' equivalence.
+Compute some determinacy bound of `f` with respect to `:right` or `:contact` equivalence.
 Return infinity if not finitely determined. 
 By default computes with respect to contact equivalence.
 At the cost of a higher computation time this function computes in general 
@@ -513,7 +513,7 @@ end
 @doc raw"""
     sharper_determinacy_bound(X::HypersurfaceGerm, equivalence::Symbol = :contact)
 
-Compute some determinacy bound of the hypersurface germ 'X' with respect to ':right' or ':contact' equivalence.
+Compute some determinacy bound of the hypersurface germ `X` with respect to `:right` or `:contact` equivalence.
 Return infinity if not finitely determined. 
 By default computes with respect to contact equivalence.
 At the cost of a higher computation time this function computes in general 
@@ -639,7 +639,7 @@ end
 @doc raw"""
     is_contact_equivalent(f::MPolyLocRingElem, g::MPolyLocRingElem)
 
-Return if 'f' and 'g' are contact equivalent. 
+Return if `f` and `g` are contact equivalent. 
 Throws an error if method was unable to determine contact equivalence.
 # Examples
 ```jldoctest
@@ -714,7 +714,7 @@ end
 @doc raw"""
     is_contact_equivalent(X::HypersurfaceGerm, Y::HypersurfaceGerm)
 
-Return if the hypersurface germs 'X' and 'Y' are contact equivalent. 
+Return if the hypersurface germs `X` and `Y` are contact equivalent. 
 Throws an error if method was unable to determine contact equivalence.
 # Examples
 ```jldoctest
@@ -753,9 +753,9 @@ end
 
 Return the Tjurina module of the complete intersection germ `(X,p)` at the point `p`.
 !!! note
-    For better readability and for saving memory the Tjurina module of the corresponding CompleteIntersectionGerm shifted to the origin '0' is actually computed and returned.
+    For better readability and for saving memory the Tjurina module of the corresponding CompleteIntersectionGerm shifted to the origin `0` is actually computed and returned.
 !!! note
-    When dealing with with a hypersurface singularity use the type 'HypersurfaceGerm' and the function 'tjurina_algebra' to also receive the algebra structure of the Tjurina module.
+    When dealing with with a hypersurface singularity use the type `HypersurfaceGerm` and the function `tjurina_algebra` to also receive the algebra structure of the Tjurina module.
 
 # Examples
 ```jldoctest
@@ -846,9 +846,9 @@ tjurina_number(X::CompleteIntersectionGerm) = vector_space_dim(tjurina_module(X)
 
 Return the module $T^1_{X,p}$ of infinitesimal deformations for the space germ `(X,p)` at the point `p`. 
 !!! note
-    For better readability and for saving memory the Tjurina module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
+    For better readability and for saving memory the Tjurina module of the corresponding SpaceGerm shifted to the origin `0` is actually computed and returned.
 !!! note
-    When dealing with with a Hypersurface use the type 'HypersurfaceGerm' and the function 'tjurina_algebra' to also receive the algebra structure of the Tjurina module.
+    When dealing with with a Hypersurface use the type `HypersurfaceGerm` and the function `tjurina_algebra` to also receive the algebra structure of the Tjurina module.
 # Examples
 ```jldoctest
 ```
@@ -953,7 +953,7 @@ tjurina_number(X::SpaceGerm) = vector_space_dim(T1_module(X))
     is_rigid(X::CompleteIntersectionGerm)
     is_rigid(X::SpaceGerm)
 
-Return whether 'X' is a rigid singularity. 
+Return whether `X` is a rigid singularity. 
 # Examples
 ```jldoctest
 julia> R, (x,y,z) = QQ[:x,:y,:z];
@@ -1000,7 +1000,7 @@ is_rigid(X::SpaceGerm) = is_zero(T1_module(X))
 
 Return the module $T^2_{X,p}$ of obstructions to lifting a deformation of `(X,p)` over a fat point `(T,0)` to a infinitesimal bigger fat point `(T',0)`.
 !!! note
-    For better readability and for saving memory the T2 module of the corresponding SpaceGerm shifted to the origin '0' is actually computed and returned.
+    For better readability and for saving memory the T2 module of the corresponding SpaceGerm shifted to the origin `0` is actually computed and returned.
 # Examples
 ```jldoctest
 julia> R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
