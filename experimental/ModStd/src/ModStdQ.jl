@@ -218,7 +218,7 @@ function groebner_basis_with_transform_inner(I::MPolyIdeal{QQMPolyRingElem}, ord
 end
 
 #= function Oscar.groebner_basis_with_transform(I::MPolyIdeal{QQMPolyRingElem}; ordering::Symbol = :degrevlex, complete_reduction::Bool = true, use_hilbert::Bool = false)
- =    ord = Oscar.Orderings.MonomialOrdering(base_ring(I), Oscar.Orderings.ordering(gens(base_ring(I)), ordering))
+ =    ord = Oscar.Orderings.MonomialOrdering(base_ring(I), Oscar.Orderings.ordering(base_ring(I), ordering))
  =    return groebner_basis_with_transform_inner(I, ord; complete_reduction=complete_reduction, use_hilbert=use_hilbert)
  = end
  =  =#

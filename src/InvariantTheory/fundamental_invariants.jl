@@ -27,7 +27,7 @@ function fundamental_invariants_via_king(RG::FinGroupInvarRing, beta::Int=0)
 
   Rgraded = _internal_polynomial_ring(RG)
   R = forget_grading(Rgraded)
-  ordR = degrevlex(gens(R))
+  ordR = degrevlex(R)
 
   S = elem_type(R)[]
   G = IdealGens(R, elem_type(R)[], ordR)

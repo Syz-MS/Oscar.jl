@@ -370,7 +370,7 @@ julia> I = ideal([x0*x1, x2]);
 
 julia> g = generating_system(I);
 
-julia> set_ordering(g, degrevlex(gens(R)))
+julia> set_ordering(g, degrevlex(R))
 Ideal generating system with elements
   1: x0*x1
   2: x2

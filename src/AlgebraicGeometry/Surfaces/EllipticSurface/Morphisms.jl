@@ -496,7 +496,7 @@ function point_on_generic_fiber_from_divisor(D::AbsWeilDivisor{<:EllipticSurface
   # In case of a multisection do some extra preparation; see below.
   !is_one(intersect(D, WF)) && return point_on_generic_fiber_from_divisor(_prepare_section(D))
 
-  g = gens(groebner_basis(saturated_ideal(IWX), ordering=lex(gens(R))))
+  g = gens(groebner_basis(saturated_ideal(IWX), ordering=lex(R)))
 
   # extract the coefficients for the section
   kkt = base_field(E)

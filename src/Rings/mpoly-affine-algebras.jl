@@ -632,7 +632,7 @@ function multi_hilbert_series(
   # TODO: Shouldn't the ordering be adapted to the grading in some sense?
   numer = one(HSRing)
   if backend == :Zach
-    LI = leading_ideal(I; ordering=degrevlex(gens(R)))  # ??? better not to specify the grading ???
+    LI = leading_ideal(I; ordering=degrevlex(R))  # ??? better not to specify the grading ???
     numer = _numerator_monomial_multi_hilbert_series(LI, HSRing, m; algorithm=algorithm)
   elseif backend == :Abbott
     # TODO: Pass on the `algorithm` keyword argument also here.
@@ -694,7 +694,7 @@ end
 #   if iszero(I)
 #      p = one(S)
 #   else
-#      LI = leading_ideal(I, ordering=degrevlex(gens(R)))
+#      LI = leading_ideal(I, ordering=degrevlex(R))
 #     if minMI<0
 #         RNEW, _ = graded_polynomial_ring(coefficient_ring(R), symbols(R); weights = Matrix(transpose(MI)))
 #         LI = ideal(RNEW, [RNEW(LI[i]) for i = 1:ngens(LI)])
@@ -864,7 +864,7 @@ function multi_hilbert_function(A::MPolyQuoRing, g::FinGenAbGroupElem)
        return 0
     end
 
-    LI = leading_ideal(A.I, ordering=degrevlex(gens(R)))
+    LI = leading_ideal(A.I, ordering=degrevlex(R))
     ### TODO: Decide whether we should check whether a GB with respect
     ### to another degree-compatible ordering is already available
 
@@ -991,7 +991,7 @@ false
  @req coefficient_ring(R) isa AbstractAlgebra.Field "The coefficient ring must be a field"
  @req is_standard_graded(R) "The base ring must be standard ZZ-graded"
 
- sI = singular_generators(I.gens, negdegrevlex(gens(R)))
+ sI = singular_generators(I.gens, negdegrevlex(R))
  res = Singular.LibHomolog.isCM(sI)
  if res == 1 return true end
  return false

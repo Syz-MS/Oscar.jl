@@ -235,7 +235,7 @@ function default_ordering(F::FreeMod)
     if iszero(F)
       F.default_ordering = default_ordering(base_ring(F))*ModuleOrdering(F, Orderings.ModOrdering(Vector{Int}(), :lex))
     else
-      F.default_ordering = default_ordering(base_ring(F))*lex(gens(F))
+      F.default_ordering = default_ordering(base_ring(F))*lex(F)
     end
   end
   return F.default_ordering::ModuleOrdering{typeof(F)}
@@ -246,7 +246,7 @@ function default_ordering(F::FreeMod{T}) where {T<:Union{ZZRingElem, FieldElem}}
         if iszero(F)
             F.default_ordering = ModuleOrdering(F, Orderings.ModOrdering(Int[], :lex))
         else
-            F.default_ordering = lex(gens(F))
+            F.default_ordering = lex(F)
         end
     end
     return F.default_ordering::ModuleOrdering{typeof(F)}

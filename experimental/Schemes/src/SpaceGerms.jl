@@ -1134,7 +1134,7 @@ function _icis_milnor_helper(L::MPolyLocRing, v::Vector,f::RingElem)
   mo = minors(JM,length(w))
   J = I + ideal(R,mo)
   !isone(J) || return 0
-  o = negdegrevlex(gens(R))
+  o = negdegrevlex(R)
   LJ = leading_ideal(J;ordering=o)
 
   ## we might have a violated colength condition (i.e. dim(LJ)>0)
@@ -1208,7 +1208,7 @@ function _icis_milnor_helper(v::Vector,f::MPolyRingElem)
               [derivative(h,i) for i in 1:n for h in bla])
   mo = minors(JM,length(bla))
   J = I + ideal(R,mo)
-  o = degrevlex(gens(R))
+  o = degrevlex(R)
   LJ = leading_ideal(J;ordering=o)
 
   ## we might have a violated colength condition (i.e. dim(LJ)>0)

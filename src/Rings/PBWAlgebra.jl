@@ -427,7 +427,7 @@ julia> L = [x*y, x*z, y*z + 1];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(gens(R)))
+julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(R))
 (PBW-algebra over rational field in x, y, z with relations y*x = x*y, z*x = x*z, z*y = y*z + 1, PBWAlgElem{QQFieldElem, Singular.n_Q}[x, y, z])
 ```
 """
@@ -642,7 +642,7 @@ julia> L = [x*y, x*z, y*z + 1];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(gens(R)))
+julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(R))
 (PBW-algebra over rational field in x, y, z with relations y*x = x*y, z*x = x*z, z*y = y*z + 1, PBWAlgElem{QQFieldElem, Singular.n_Q}[x, y, z])
 
 julia> I = left_ideal(A, [x^2*y^2, x*z+y*z])
@@ -1111,7 +1111,7 @@ julia> L = [x*y-z, x*z+2*x, x*a, y*z-2*y, y*a, z*a];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x, y, z, a) = pbw_algebra(R, REL, deglex(gens(R)))
+julia> A, (x, y, z, a) = pbw_algebra(R, REL, deglex(R))
 (PBW-algebra over rational field in x, y, z, a with relations y*x = x*y - z, z*x = x*z + 2*x, a*x = x*a, z*y = y*z - 2*y, a*y = y*a, a*z = z*a, PBWAlgElem{QQFieldElem, Singular.n_Q}[x, y, z, a])
 
 julia> f = 4*x*y+z^2-2*z-a;
@@ -1136,7 +1136,7 @@ julia> L = [p*q+q^2];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (p, q) = pbw_algebra(R, REL, lex(gens(R)))
+julia> A, (p, q) = pbw_algebra(R, REL, lex(R))
 (PBW-algebra over rational field in p, q with relations q*p = p*q + q^2, PBWAlgElem{QQFieldElem, Singular.n_Q}[p, q])
 
 julia> I = left_ideal(A, [p, q])

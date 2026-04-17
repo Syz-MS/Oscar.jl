@@ -152,7 +152,7 @@ function homogenize_at_last_variable(I::MPolyIdeal, S::MPolyDecRing)
     M[i + 1, i] = 1
   end
 
-  o = matrix_ordering(gens(Sp), M)
+  o = matrix_ordering(Sp, M)
   gb = standard_basis(J; ordering=o)
 
   t = gen(Sp, nvars(Sp))

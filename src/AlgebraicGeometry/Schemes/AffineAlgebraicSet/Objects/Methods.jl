@@ -96,7 +96,7 @@ julia> rational_point_coordinates(I)
 """
 function rational_point_coordinates(I::MPolyIdeal)
   R = base_ring(I)
-  o = degrevlex(gens(R))
+  o = degrevlex(R)
   LG = leading_ideal(I;ordering=o)
   @req dim(LG) == 0 "Ideal does not describe finite set of points"
   vd = vector_space_dim(quo(base_ring(LG),LG)[1])

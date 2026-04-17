@@ -1969,7 +1969,7 @@ function ideal_membership(
   Is = shifted_ideal(I)
   # We have to call for that groebner basis once manually. 
   # Otherwise the ideal membership will complain about the ordering not being global.
-  o = negdegrevlex(gens(R))
+  o = negdegrevlex(R)
   standard_basis(Is, ordering=o)
   return ideal_membership(shift(numerator(a)), Is, ordering=o)
 end
@@ -1984,7 +1984,7 @@ function coordinates(
   J = shifted_ideal(I)
   shift, tfihs = base_ring_shifts(L)
   p = shift(numerator(a))
-  o = negdegrevlex(gens(R))
+  o = negdegrevlex(R)
   x, u = Oscar.lift(p, J, o)
   T = pre_saturation_data(I)
   return transpose(T * transpose(L(one(base_ring(L)), tfihs(u)*denominator(a), check=false)*change_base_ring(L, map_entries(tfihs,x))))
@@ -2652,7 +2652,7 @@ end
 @attr Union{Int, NegInf} function krull_dim(I::MPolyLocalizedIdeal{RT}) where {RT<:MPolyLocRing{<:Field, <:FieldElem, <:MPolyRing, <:MPolyRingElem, <:MPolyComplementOfKPointIdeal}}
   J = shifted_ideal(I)
   # TODO: Is there a more conceptual way to do this???
-  oo = negdegrevlex(gens(base_ring(J)))
+  oo = negdegrevlex(base_ring(J))
   return krull_dim(leading_ideal(J, ordering=oo))
 end
 

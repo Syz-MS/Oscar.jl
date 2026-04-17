@@ -1836,7 +1836,7 @@ end
 function vector_space_dim(R::MPolyQuoLocRing{<:Field, <:Any,<:Any, <:Any,
                                  <:MPolyComplementOfKPointIdeal})
   I = shifted_ideal(modulus(R))
-  o = negdegrevlex(gens(base_ring(R)))
+  o = negdegrevlex(base_ring(R))
   LI=leading_ideal(standard_basis(I, ordering = o))
   return vector_space_dim(quo(base_ring(R),ideal(base_ring(R),gens(LI)))[1])
 end
@@ -2353,7 +2353,7 @@ function (f::Oscar.MPolyAnyMap{<:MPolyRing, <:MPolyQuoLocRing, <:MPolyQuoLocaliz
 end
 
 function vector_space(kk::Field, W::MPolyQuoLocRing;
-    ordering::MonomialOrdering=degrevlex(gens(base_ring(W)))
+    ordering::MonomialOrdering=degrevlex(base_ring(W))
   )
   R = base_ring(W)::MPolyRing
   kk === coefficient_ring(R)::Field || error("change of base field not implemented")
@@ -2375,7 +2375,7 @@ function vector_space(kk::Field, W::MPolyQuoLocRing{<:Field, <:FieldElem,
                                                     <:MPolyRing, <:MPolyRingElem,
                                                     <:MPolyComplementOfKPointIdeal
                                                    };
-    ordering::MonomialOrdering=negdegrevlex(gens(base_ring(W)))
+    ordering::MonomialOrdering=negdegrevlex(base_ring(W))
   )
   R = base_ring(W)::MPolyRing
   kk === coefficient_ring(R)::Field || error("change of base field not implemented")

@@ -2024,7 +2024,7 @@ julia> R, (w, x, y, z) = polynomial_ring(QQ, [:w, :x, :y, :z]);
 julia> F = free_module(R, 3)
 Free module of rank 3 over R
 
-julia> o = invlex(gens(F))*degrevlex(R)
+julia> o = invlex(F)*degrevlex(R)
 invlex([gen(1), gen(2), gen(3)])*degrevlex([w, x, y, z])
 
 julia> induced_ring_ordering(o)
