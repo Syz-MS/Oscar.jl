@@ -387,7 +387,7 @@ end
 
    a = matrix_ordering([x, y], matrix(ZZ, 2, 2, [1 2; 3 4]))
    b = wdeglex([s, t, u], [1, 2, 3])
-   O6 = a * lex(gens(K)) * b
+   O6 = a * lex(K) * b
    @test monomial_ordering(R, Oscar.singular(O6)) == a * b
    @test length(string(O6)) > 2
    @test string(Oscar.singular(O6)) == "ordering_M([1 2; 3 4]) * ordering_C() * ordering_Wp([1, 2, 3])"
