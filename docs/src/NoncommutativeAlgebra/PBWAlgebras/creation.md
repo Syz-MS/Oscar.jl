@@ -77,7 +77,7 @@ julia> L = [x*y, x*z, y*z + 1];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(gens(R)));
+julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(R));
 
 julia> coefficient_ring(A)
 Rational field
@@ -117,7 +117,7 @@ julia> L = [x*y, x*z, y*z + 1];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(gens(R)));
+julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(R));
 
 julia> f = 3*x^2+z*y
 3*x^2 + y*z + 1
@@ -141,7 +141,7 @@ julia> L = [x*y, x*z, y*z + 1];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(gens(R)));
+julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(R));
 
 julia> f = 3*x^2+z*y
 3*x^2 + y*z + 1
@@ -163,7 +163,7 @@ julia> L = [x*y, x*z, y*z + 1];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(gens(R)));
+julia> A, (x,y,z) = pbw_algebra(R, REL, deglex(R));
 
 julia> B =  build_ctx(A);
 

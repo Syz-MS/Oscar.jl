@@ -61,7 +61,7 @@ julia> L = [-x*y, -x*z, -y*z];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(gens(R)));
+julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(R));
 
 julia> I = two_sided_ideal(A, [x^2, y^2, z^2]);
 
@@ -109,7 +109,7 @@ julia> L = [-x*y, -x*z, -y*z];
 
 julia> REL = strictly_upper_triangular_matrix(L);
 
-julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(gens(R)));
+julia> A, (x, y, z) = pbw_algebra(R, REL, deglex(R));
 
 julia> I = two_sided_ideal(A, [x^2, y^2, z^2]);
 

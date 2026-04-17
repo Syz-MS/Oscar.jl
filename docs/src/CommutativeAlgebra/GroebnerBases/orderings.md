@@ -429,10 +429,10 @@ julia> R, (w, x, y, z) = polynomial_ring(QQ, [:w, :x, :y, :z]);
 julia> F = free_module(R, 3)
 Free module of rank 3 over R
 
-julia> o1 = degrevlex(R)*invlex(gens(F))
+julia> o1 = degrevlex(R)*invlex(F)
 degrevlex([w, x, y, z])*invlex([gen(1), gen(2), gen(3)])
 
-julia> o2 = invlex(gens(F))*degrevlex(R)
+julia> o2 = invlex(F)*degrevlex(R)
 invlex([gen(1), gen(2), gen(3)])*degrevlex([w, x, y, z])
 
 ```
@@ -455,7 +455,7 @@ The comparison function `cmp` as well as the tests `is_global`, `is_local`, and 
     the `default_ordering` for this is `degrevlex` except if $R$ is $\mathbb
     Z$-graded with positive weights. Then the corresponding `wdegrevlex` ordering is
     used. Given a free $R$-module $F$, the `default_ordering` is
-    `default_ordering(R)*lex(gens(F))`.
+    `default_ordering(R)*lex(F)`.
 
 ```@docs
 default_ordering(::MPolyRing)
