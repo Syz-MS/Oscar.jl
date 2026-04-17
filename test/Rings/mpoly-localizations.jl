@@ -528,7 +528,7 @@ end
   R, (x, y) = QQ[:x, :y]
   f = x+y
   U = powers_of_element(f)
-  V = Oscar.MPolyLeadingMonOne(neglex(gens(R)))
+  V = Oscar.MPolyLeadingMonOne(neglex(R))
   T = U*V
   L, _ = localization(R, T)
   I = ideal(L, x)

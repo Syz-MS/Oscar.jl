@@ -8,9 +8,9 @@
     @test_throws ErrorException groebner_basis(I, ordering=neglex(R))
     standard_basis(I, ordering=neglex(R))
     @test gens(I.gb[neglex(R)]) == QQMPolyRingElem[-x^3 + 2*y^5, x]
-    @test leading_ideal(I, ordering=degrevlex(gens(R))) == ideal(R,[x*y^2, x^4, y^5])
+    @test leading_ideal(I, ordering=degrevlex(R)) == ideal(R,[x*y^2, x^4, y^5])
     @test leading_ideal(I) == ideal(R,[x*y^2, x^4, y^5])
-    @test leading_ideal(I, ordering=lex(gens(R))) == ideal(R,[y^7, x*y^2, x^3])
+    @test leading_ideal(I, ordering=lex(R)) == ideal(R,[y^7, x*y^2, x^3])
 
     # algorithm = :modular option
     R = @polynomial_ring(QQ, [:x, :y])
@@ -203,7 +203,7 @@ end
 @testset "non-global orderings" begin
   R, (x, y) = QQ[:x, :y]
   I = ideal(R, [x^2*(x-1)-y^2, y^3*(x+y-6)])
-  o = negdegrevlex(gens(R))
+  o = negdegrevlex(R)
   G = standard_basis(I, ordering=o)
   @test normal_form(x^5-5, I, ordering=o) == -5
   J = ideal(R, [x^5-5])
@@ -230,7 +230,7 @@ end
 
   @test elements(H) == G
   @test isdefined(I, :gb)
-  @test Oscar.oscar_generators(I.gb[degrevlex(gens(base_ring(I)))]) == G
+  @test Oscar.oscar_generators(I.gb[degrevlex(base_ring(I))]) == G
   @test length(I.gb) == 1
   H = groebner_basis_f4(I, eliminate=2);
   G = [x3^2*x4 + 73209671*x3*x4^2 + 260301051*x4^3 + 188447115*x3^2 + 167207272*x3*x4 + 120660383*x4^2 + 210590781*x3 + 109814506*x4
@@ -334,7 +334,7 @@ end
   # Is any groebner basis known?
   @test Oscar.is_known(groebner_basis, I)
   # Is a groebner basis for lex known?
-  @test !Oscar.is_known(groebner_basis, I; ordering=lex(gens(R)))
+  @test !Oscar.is_known(groebner_basis, I; ordering=lex(R))
 end
 
 @testset "factoring standard resp. groebner bases" begin

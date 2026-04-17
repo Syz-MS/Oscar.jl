@@ -31,7 +31,7 @@ end
     R, (x, y, z) = QQ[:x, :y, :z]
     L = [x*y, x*z, y*z + 1]
     REL = strictly_upper_triangular_matrix(L)
-    A, (x, y, z) = pbw_algebra(R, REL, deglex(gens(R)))
+    A, (x, y, z) = pbw_algebra(R, REL, deglex(R))
     M = FreeMod(A, 3)
     @test ngens(M) == 3
     @test  gens(M)[1] in M

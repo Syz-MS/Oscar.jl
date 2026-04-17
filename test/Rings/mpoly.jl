@@ -254,8 +254,8 @@ end
 @testset "Groebner" begin
   R, (x, y, z) = polynomial_ring(QQ, [:x, :y, :z])
   I = ideal([x+y^2+4*z-5,x+y*z+5*z-2])
-  @test gens(groebner_basis(I, ordering=lex(gens(R)))) == [y^2 - y*z - z - 3, x + y*z + 5*z - 2]
-  @test gens(groebner_basis(I, ordering=degrevlex(gens(R)), complete_reduction = true)) == [x + y*z + 5*z - 2, x + y^2 + 4*z - 5, x*y - x*z - 5*x - 2*y - 4*z^2 - 20*z + 10, x^2 + x*z^2 + 10*x*z - 4*x + 4*z^3 + 20*z^2 - 20*z + 4]
+  @test gens(groebner_basis(I, ordering=lex(R))) == [y^2 - y*z - z - 3, x + y*z + 5*z - 2]
+  @test gens(groebner_basis(I, ordering=degrevlex(R), complete_reduction = true)) == [x + y*z + 5*z - 2, x + y^2 + 4*z - 5, x*y - x*z - 5*x - 2*y - 4*z^2 - 20*z + 10, x^2 + x*z^2 + 10*x*z - 4*x + 4*z^3 + 20*z^2 - 20*z + 4]
 
   # Test coefficient rings that are actually fields for safety. The first three
   # are native to singular while FpFieldElem now has a proper wrapper
@@ -264,7 +264,7 @@ end
     # Setting the internal_ordering is necessary for divrem to use the correct ordering
     R, (x, y) = polynomial_ring(Zn, [:x, :y], internal_ordering = :degrevlex)
     l = [x*y+x^3+1, x*y^2+x^2+1]
-    g = gens(groebner_basis(ideal(R, l); ordering = degrevlex(gens(R))))
+    g = gens(groebner_basis(ideal(R, l); ordering = degrevlex(R)))
     @test iszero(divrem(l[1] + l[2], g)[2])
   end
 
@@ -272,7 +272,7 @@ end
   # Setting the internal_ordering is necessary for divrem to use the correct ordering
   R, (x, y, z) = polynomial_ring(F, [:x, :y, :z], internal_ordering = :degrevlex)
   l = [3*x^5 + a*x*y^2 + a^2*z^2, z^3*x^2 + 7*y^3 + z]
-  gb = gens(groebner_basis(ideal(R, l); ordering = degrevlex(gens(R))))
+  gb = gens(groebner_basis(ideal(R, l); ordering = degrevlex(R)))
   @test iszero(divrem(l[1] + l[2], gb)[2])
 end
 
@@ -352,12 +352,12 @@ end
    @test elements(g) == [x0*x1, x2]
    @test g.isGB == false
    @test isdefined(g, :ord) == false
-   h = set_ordering(g, degrevlex(gens(R)))
+   h = set_ordering(g, degrevlex(R))
    @test h != g
-   @test ordering(h) == degrevlex(gens(R))
+   @test ordering(h) == degrevlex(R)
    h1 = Oscar.IdealGens(base_ring(g), gens(g))
    Oscar.set_ordering!(h1, lex(R))
-   @test ordering(h1) == lex(gens(R))
+   @test ordering(h1) == lex(R)
 end
 
 @testset "NonSimpleField" begin

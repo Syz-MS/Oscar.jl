@@ -462,14 +462,14 @@ end
 
   R, (x,y,z) = polynomial_ring(QQ, [:x, :y, :z])
   F = FreeMod(R, 2)
-  lp = lex(gens(base_ring(F)))*lex(gens(F))
+  lp = lex(base_ring(F))*lex(F)
 
   M = SubquoModule(F, [(x^2*y^2*F[1]+y*z*F[2]), x*z*F[1]+z^2*F[2]])
   @test leading_module(M,lp) == SubquoModule(F, [x*z*F[1], x*y^2*z^2*F[2], x^2*y^2*F[1]])
 
   R, x = polynomial_ring(QQ, :x => 1:4)
   F = FreeMod(R, 1)
-  lp = lex(gens(base_ring(F)))*lex(gens(F))
+  lp = lex(base_ring(F))*lex(F)
 
   J = SubquoModule(F, [(x[1]+x[2]+R(1))*F[1], (x[1]+x[2]+2*x[3]+2*x[4]+1)*F[1],(x[1]+x[2]+x[3]+x[4]+1)*F[1]])
   @test Oscar.oscar_generators(reduced_groebner_basis(J, lp)) == Oscar.oscar_generators(Oscar.ModuleGens([(x[3]+x[4])*F[1], (x[1]+x[2]+1)*F[1]], F))
@@ -477,7 +477,7 @@ end
 
   R, (x,y) = polynomial_ring(QQ, [:x, :y])
   F = FreeMod(R, 1)
-  lp = lex(gens(base_ring(F)))*lex(gens(F))
+  lp = lex(base_ring(F))*lex(F)
   I = SubquoModule(F, [(x-1)*F[1], (y^2-1)*F[1]])
   f = (x*y^2+y)*F[1]
   @test Oscar.reduce(f, I) == (y+1)*F[1]
@@ -506,7 +506,7 @@ end
 @testset "Singular Ordering Test" begin
   R, x = polynomial_ring(QQ, :x => 1:4)
   F = FreeMod(R, 1)
-  lp = lex(gens(base_ring(F))) * lex(gens(F))
+  lp = lex(base_ring(F)) * lex(F)
   J = SubquoModule(F, [
         (x[1] + x[2] + R(1)) * F[1],
         (x[1] + x[2] + 2*x[3] + 2*x[4] + 1) * F[1],
