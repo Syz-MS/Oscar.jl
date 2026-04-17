@@ -92,10 +92,10 @@
    @test_throws ErrorException is_global(lex([x,y]))
    @test_throws ErrorException is_local(neglex([x,y]))
 
-   @test_throws ArgumentError monomial_ordering(gens(R), :foo)
-   @test_throws ArgumentError monomial_ordering(gens(R), :lex, ones(Int, ngens(R)+1))
-   @test_throws ArgumentError monomial_ordering(gens(R), :foo, ones(Int, ngens(R)))
-   @test_throws ArgumentError matrix_ordering(gens(R), zero_matrix(ZZ, 2, ngens(R) + 1))
+   @test_throws ArgumentError monomial_ordering(R, :foo)
+   @test_throws ArgumentError monomial_ordering(R, :lex, ones(Int, ngens(R)+1))
+   @test_throws ArgumentError monomial_ordering(R, :foo, ones(Int, ngens(R)))
+   @test_throws ArgumentError matrix_ordering(R, zero_matrix(ZZ, 2, ngens(R) + 1))
 
    @test lex(R) == lex(gens(R))
    @test deglex(R) == deglex(gens(R))
@@ -224,10 +224,10 @@ end
    @test neglex([z])*neglex([y])*neglex([x]) == neginvlex([x, y, z])
 
    m = matrix(ZZ, [-1 -1 -1; 1 0 0; 0 1 0; 0 0 1])
-   @test negdeglex(gens(R)) == matrix_ordering(gens(R), m)
+   @test negdeglex(R) == matrix_ordering(R, m)
 
    m = matrix(ZZ, [-2 -3 -4; 1 0 0; 0 1 0; 0 0 1])
-   @test negwdeglex(gens(R), [2, 3, 4]) == matrix_ordering(gens(R), m)
+   @test negwdeglex(R, [2, 3, 4]) == matrix_ordering(R, m)
 end
 
 function test_opposite_ordering(a)
@@ -235,7 +235,7 @@ function test_opposite_ordering(a)
   b = opposite_ordering(R, a)
   M = matrix(a)
   N = reduce(hcat, [M[:,i:i] for i in ncols(M):-1:1])
-  @test b == matrix_ordering(gens(R), N)
+  @test b == matrix_ordering(R, N)
   @test a == opposite_ordering(R, b)
 end
 
@@ -313,16 +313,16 @@ end
         x1*x3*x4, x2*x3*x4, x3^2*x4, x1*x4^2, x2*x4^2, x3*x4^2, x4^3]
 
    f = sum(M)
-   o = negdegrevlex(gens(R))
+   o = negdegrevlex(R)
    test_opposite_ordering(o)
    @test collect(monomials(f; ordering = o)) == M
    for i in 2:length(M)
       @test cmp(o, M[i-1], M[i]) > 0
    end
 
-   o = matrix_ordering(gens(R), matrix(ZZ, [ 1 1 1 1; 0 0 0 -1; 0 0 -1 0; 0 -1 0 0 ]))
+   o = matrix_ordering(R, matrix(ZZ, [ 1 1 1 1; 0 0 0 -1; 0 0 -1 0; 0 -1 0 0 ]))
    test_opposite_ordering(o)
-   @test collect(monomials(f; ordering = o)) == collect(monomials(f; ordering = degrevlex(gens(R))))
+   @test collect(monomials(f; ordering = o)) == collect(monomials(f; ordering = degrevlex(R)))
 
    for a in (matrix_ordering([x1, x2], [1 2; 3 4]),
              negwdegrevlex([x1, x2], [1, 2]),
@@ -352,7 +352,7 @@ end
    bad = Singular.ordering_a([1,2,3,4,5,6])*Singular.ordering_rs(5)
    @test_throws ErrorException monomial_ordering(R, bad)
 
-   O1 = degrevlex(gens(R))
+   O1 = degrevlex(R)
    test_opposite_ordering(O1)
    @test monomial_ordering(R, Oscar.singular(O1)) == O1
    @test length(string(O1)) > 2
@@ -364,7 +364,7 @@ end
    @test length(string(O2)) > 2
    @test string(Oscar.singular(O2)) == "ordering_lp(2) * ordering_Dp(3)"
 
-   O3 = wdeglex(gens(R), [2, 3, 5, 7, 3])
+   O3 = wdeglex(R, [2, 3, 5, 7, 3])
    test_opposite_ordering(O3)
    @test monomial_ordering(R, Oscar.singular(O3)) == O3
    @test length(string(O3)) > 2
@@ -380,8 +380,8 @@ end
    @test cmp(lex(K), gen(K,1), gen(K,2)) == -1
    @test cmp(invlex(K), gen(K,1), gen(K,2)) == 1
 
-   O5 = invlex(gens(K))*degrevlex(gens(R))
-   @test monomial_ordering(R, Oscar.singular(O5)) == degrevlex(gens(R))
+   O5 = invlex(K)*degrevlex(R)
+   @test monomial_ordering(R, Oscar.singular(O5)) == degrevlex(R)
    @test length(string(O5)) > 2
    @test string(Oscar.singular(O5)) == "ordering_c() * ordering_dp(5)"
 
@@ -392,25 +392,25 @@ end
    @test length(string(O6)) > 2
    @test string(Oscar.singular(O6)) == "ordering_M([1 2; 3 4]) * ordering_C() * ordering_Wp([1, 2, 3])"
 
-   O7 = weight_ordering([-1,2,0,2,0], degrevlex(gens(R)))
+   O7 = weight_ordering([-1,2,0,2,0], degrevlex(R))
    @test monomial_ordering(R, Oscar.singular(O7)) == O7
    @test length(string(O7)) > 2
    @test string(Oscar.singular(O7)) == "ordering_a([-1, 2, 0, 2, 0]) * ordering_dp(5)"
 
-   O8 = lex([gen(K,1), gen(K,3), gen(K,4), gen(K,2)]) * degrevlex(gens(R))
+   O8 = lex([gen(K,1), gen(K,3), gen(K,4), gen(K,2)]) * degrevlex(R)
    @test_throws ErrorException Oscar.singular(O8)
 
-   O9 = matrix_ordering([x, y], [1 2; 1 2]; check = false) * lex(gens(R))
+   O9 = matrix_ordering([x, y], [1 2; 1 2]; check = false) * lex(R)
    @test monomial_ordering(R, Oscar.singular(O9)) == O9
    @test Oscar.singular(O9) isa Singular.sordering
 end
 
 @testset "Polynomial Ordering misc bugs" begin
    R, (x, y) = QQ[:x, :y]
-   @test degrevlex(gens(R)) != degrevlex(Oscar.reverse(gens(R)))
+   @test degrevlex(R) != degrevlex(Oscar.reverse(gens(R)))
 
    R, (x, y, z) = QQ[:x, :y, :z]
-   @test degrevlex(gens(R)) != degrevlex(Oscar.reverse(gens(R)))
+   @test degrevlex(R) != degrevlex(Oscar.reverse(gens(R)))
 
    a = negwdegrevlex([z, x, y], [4, 5, 6])
    test_opposite_ordering(a)
@@ -460,14 +460,14 @@ end
 @testset "Monomial Orderings comparison" begin
   R, (x,y,z,w) = polynomial_ring(GF(32003), [:x, :y, :z, :w]);
   F = FreeMod(R, 2)
-  o = lex(gens(F))*lex(gens(R))
-  oo = lex(gens(F))*lex(gens(R))
+  o = lex(F)*lex(R)
+  oo = lex(F)*lex(R)
   @test o == oo
   @test hash(o) == hash(oo)
 
   F = FreeMod(R, 1)
-  o = lex(gens(F))*degrevlex(gens(R))
-  oo = degrevlex(gens(R))*invlex(gens(F))
+  o = lex(F)*degrevlex(R)
+  oo = degrevlex(R)*invlex(F)
   @test o == oo
   @test hash(o) == hash(oo)
 end
