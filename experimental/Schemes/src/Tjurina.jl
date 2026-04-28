@@ -669,8 +669,8 @@ function is_contact_equivalent(f::MPolyLocRingElem, g::MPolyLocRingElem)
   ## tjurina number is invariant under contact equivalence
   tjurina_number(f) == tjurina_number(g) || return false
   ## Switching to polynomial representatives and shifting to origin for computations w.r.t. local ordering
-  shift_f, _ = Oscar.base_ring_shifts(parent(f))
-  shift_g, _ = Oscar.base_ring_shifts(parent(g))
+  shift_f, _ = base_ring_shifts(parent(f))
+  shift_g, _ = base_ring_shifts(parent(g))
   L, _ = localization(R, complement_of_point_ideal(R, [coefficient_ring(R)(0) for i = 1:ngens(R)]))
   f_poly = L(shift_f(numerator(f)))
   g_poly = L(shift_g(numerator(g)))
