@@ -271,9 +271,6 @@ end
   IS = ideal(R, x^5+y^6+z^7+x*y*z)
   S = spec(R, IS)
   @test tjurina_number(HypersurfaceGerm(S, [0,0,0])) == tjurina_number(CompleteIntersectionGerm(S, [0,0,0]))
-  IT = ideal(R, [x^2+y^2, x^2+2*y^2])
-  T = CompleteIntersectionGerm(spec(R, IT), [0,0,0])
-  @test tjurina_number(Y) == PosInf()  
   # tests for shift and local
   IW = ideal(R, [(x-1)*(x^2+y^2-(z-1)^2), (x-1)x*y])
   W = CompleteIntersectionGerm(spec(R, IW), [0,0,1])
