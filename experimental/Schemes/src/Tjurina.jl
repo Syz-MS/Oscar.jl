@@ -805,7 +805,7 @@ end
 @doc raw"""
     tjurina_number(X::CompleteIntersectionGerm)
 
-Return Tjurina number of the complete intersection germ `(X,p)` at the point `p`. 
+Return the Tjurina number of the complete intersection germ `(X,p)` at the point `p`. 
 # Examples
 ```jldoctest
 julia> R, (x,y,z) = QQ[:x,:y,:z];
