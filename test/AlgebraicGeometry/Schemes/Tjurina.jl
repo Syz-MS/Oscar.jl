@@ -279,3 +279,94 @@ end
   @test tjurina_number(W2) == 0
 end
 
+
+
+@testset "T1_module" begin
+  A = affine_space(QQ, 3)
+  R = coordinate_ring(A);
+  (x,y,z) = gens(R);
+  #HypersurfaceGerm
+  IS = ideal(R, x^5+x*y^2+z^2)
+  S = spec(R, IS)
+  @test tjurina_number(HypersurfaceGerm(S, [0,0,0])) == tjurina_number(SpaceGerm(S, [0,0,0]))  
+  #CompleteIntersectionGerm
+  IT = ideal(R, [x^2+y^3, y^3+z^2])
+  T = spec(R, IT)  
+  @test tjurina_number(CompleteIntersectionGerm(T, [0,0,0])) == tjurina_number(SpaceGerm(T, [0,0,0]))  
+  #SpaceGerms
+  IZ = ideal(R, [x*y, x*z, y*z])
+  Z = spec(R, IZ)
+  @test tjurina_number(SpaceGerm(Z, [0, 0, 0])) == 3
+  @test tjurina_number(SpaceGerm(Z, [23, 0, 0])) == 0
+  # union of two transversal planes
+  R, (x,y,u,v) = QQ[:x,:y,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  @test tjurina_number(SpaceGerm(spec(R, I), [0,0,0,0])) == 0  
+  # rational normal curve in P^4
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  M = R[x y z u; y z u v]
+  J = ideal(R, minors(M, 2))
+  @test tjurina_number(SpaceGerm(spec(R, J), [0,0,0,0,0])) == 4
+end
+
+@testset "is_rigid" begin
+  A = affine_space(QQ, 3)
+  R = coordinate_ring(A);
+  (x,y,z) = gens(R);
+  # for HypersurfaceGerm
+  IX = ideal(R, x^5+x*y^2+z^2)
+  X = spec(R, IX)
+  @test !is_rigid(HypersurfaceGerm(X, [0, 0, 0]))
+  @test is_rigid(HypersurfaceGerm(X, [-1, 0, 1]))
+  IX2 = ideal(R, x+y^3+z^2)
+  @test is_rigid(HypersurfaceGerm(spec(R, IX2), [0, 0, 0]))
+  # for CompleteIntersectionGerm
+  IY = ideal(R, [x^2+y^3, y^3+z^2])
+  Y = spec(R, IY)
+  @test !is_rigid(CompleteIntersectionGerm(Y, [0, 0, 0]))
+  @test is_rigid(CompleteIntersectionGerm(Y, [1, -1, 1]))
+  # for SpaceGerm
+  IZ = ideal(R, [x*y, x*z, y*z])
+  Z = spec(R, IZ)
+  @test !is_rigid(SpaceGerm(Z, [0, 0, 0]))
+  @test is_rigid(SpaceGerm(Z, [23, 0, 0])) 
+  # union of two transversal planes
+  R, (x,y,u,v) = QQ[:x,:y,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  @test is_rigid(SpaceGerm(spec(R, I), [0,0,0,0]))
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  @test is_rigid(SpaceGerm(spec(R, I), [0,0,0,0,0]))
+  # rational normal curve in P^4, non CMC2-example
+  M = R[x y z u; y z u v]
+  J = ideal(R, minors(M, 2))
+  @test !is_rigid(SpaceGerm(spec(R, J), [0,0,0,0,0]))
+end
+
+@testset "T2_module" begin
+  # rational normal curve in P^4 (shifted) 
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  M = R[x y-1 z-2 u-3; y-1 z-2 u-3 v-4]
+  J = ideal(R, minors(M, 2))
+  X = SpaceGerm(spec(R, J), [0,1,2,3,4])
+  T2 = T2_module(X)
+  @test vector_space_dim(T2) == 3
+  # union of two transversal planes
+  R, (x,y,u,v) = QQ[:x,:y,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  X = SpaceGerm(spec(R, I), [0,0,0,0])
+  T2 = T2_module(X)  
+  @test vector_space_dim(T2) == 4
+
+  R, (x,y,z,u,v) = QQ[:x,:y,:z,:u,:v]
+  I = intersect(ideal(R, [x,y]), ideal(R, [u,v]))
+  X = SpaceGerm(spec(R, I), [0,0,0,0,0])
+  T2 = T2_module(X)
+  @test krull_dim(T2) == 1
+  # union of a plane with a transversal line
+  R, (x,y,z) = QQ[:x,:y,:z]
+  I = ideal(R, [x*y, x*z])
+  X = SpaceGerm(spec(R, I), [0,0,0])
+  T2 = T2_module(X)
+  @test is_zero(T2)
+end
