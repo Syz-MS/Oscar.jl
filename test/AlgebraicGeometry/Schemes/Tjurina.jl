@@ -366,7 +366,7 @@ end
   # union of a plane with a transversal line
   R, (x,y,z) = QQ[:x,:y,:z]
   IX = ideal(R, [x*y, x*z])
-  X = SpaceGerm(spec(R, I), [0,0,0])
+  X = SpaceGerm(spec(R, IX), [0,0,0])
   T2 = T2_module(X)
   @test is_zero(T2)
   # HypersurfaceGerms as a SpaceGerm
