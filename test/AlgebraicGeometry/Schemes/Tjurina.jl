@@ -365,8 +365,17 @@ end
   @test krull_dim(T2) == 1
   # union of a plane with a transversal line
   R, (x,y,z) = QQ[:x,:y,:z]
-  I = ideal(R, [x*y, x*z])
+  IX = ideal(R, [x*y, x*z])
   X = SpaceGerm(spec(R, I), [0,0,0])
   T2 = T2_module(X)
   @test is_zero(T2)
+  # HypersurfaceGerms as a SpaceGerm
+  # # should work, but does because of bug with rank 0 free module
+  # IY = ideal(R, [x^5+y^3+z^2]) 
+  # Y = SpaceGerm(spec(R, IY), [0,0,0])
+  # @test is_zero(T2_module(Y))
+  # CompleteIntersectionGerm as a SpaceGerm
+  IZ = ideal(R, [x^7+y^2+z^2, x*y]) 
+  Z = SpaceGerm(spec(R, IZ), [0,0,0])
+  @test is_zero(T2_module(Z))
 end
