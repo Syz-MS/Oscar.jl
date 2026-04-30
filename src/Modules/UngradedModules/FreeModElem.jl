@@ -141,7 +141,7 @@ end
 Return the coordinates of `e` as a Vector.
 """
 function Vector(e::FreeModElem)
-   return [e[i] for i in 1:rank(parent(e))]
+  return elem_type(base_ring_type(e))[e[i] for i in 1:rank(parent(e))]
 end
 
 @doc raw"""
