@@ -6,12 +6,15 @@ function clear_denominators(v::FreeModElem{<:MPolyQuoLocRingElem})
   F = parent(v)
   L = base_ring(F)
   R = base_ring(L)
+  Fb = base_ring_module(F)
+  if rank(F) == 0
+    return zero(Fb), one(R)
+  end
   d = lcm(lifted_denominator.(Vector(v)))
   u = elem_type(R)[]
   for a in Vector(v)
     push!(u, lifted_numerator(a)*div(d, lifted_denominator(a)))
   end
-  Fb = base_ring_module(F)
   return sum([a*e for (a, e) in zip(u, gens(Fb))]), d
 end
 
