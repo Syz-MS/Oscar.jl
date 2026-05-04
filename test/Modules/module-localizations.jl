@@ -131,3 +131,14 @@ end
   Mb = Oscar.pre_saturated_module(M)
   @test b.(a.(gens(Mb))) == gens(Mb)
 end
+
+@testset "clear_denominators for zero vector of rank 0 modules" begin
+  R, (x, y) = QQ[:x, :y]
+  U = complement_of_point_ideal(R, [0, 0])
+  L, _ = localization(R, U)
+  F_L = free_module(L, 0)
+  @test Oscar.clear_denominators(zero(F_L)) == (zero(Oscar.base_ring_module(F_L)), one(R))
+  LQ, _ = quo(L, ideal(L, [x^2*y, x*y^2]))
+  F_LQ = free_module(LQ, 0)
+  @test Oscar.clear_denominators(zero(F_LQ)) == (zero(Oscar.base_ring_module(F_LQ)), one(R))
+end
