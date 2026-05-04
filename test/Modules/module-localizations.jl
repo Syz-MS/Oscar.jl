@@ -1,7 +1,7 @@
 @testset "module localizations 1" begin
   kk = QQ
   R, (x,y) = QQ[:x, :y]
-  U = Oscar.MPolyComplementOfKPointIdeal(R, [0, 0])
+  U = MPolyComplementOfKPointIdeal(R, [0, 0])
   L, _ = localization(U)
   F = FreeMod(L, 3)
   A = L[x 0 1; 0 y y^2]
@@ -17,7 +17,7 @@
   @test represents_element((x^8-9)*F[2], K)
   @test represents_element(x*F[3], K)
 
-  T = Oscar.MPolyPowersOfElement(R, [x, y])
+  T = MPolyPowersOfElement(R, [x, y])
   W, _ = localization(T)
   F = FreeMod(W, 2)
   A = W[x 0; 0 y^2]
@@ -28,7 +28,7 @@ end
 
 @testset "module localizations 2" begin
   R, (x,y) = QQ[:x, :y]
-  U = Oscar.MPolyPowersOfElement(x+y)
+  U = MPolyPowersOfElement(x+y)
   S, _ = localization(U)
   F = FreeMod(S, 2)
   Fb = Oscar.base_ring_module(F)
@@ -41,7 +41,7 @@ end
   @test success
   @test v*A == b
 
-  V = Oscar.MPolyComplementOfPrimeIdeal(ideal(R, [x,y]))
+  V = MPolyComplementOfPrimeIdeal(ideal(R, [x,y]))
   S, _ = localization(V)
   A = S[x//(x+y+1); y*(x-5)^3]
   b = matrix(S, 1, 1, [(x+y)*x + 5*y//(x+y+2)^10])
@@ -100,14 +100,14 @@ end
   F2 = FreeMod(W, 2)
   g = hom(F2, M, W[x*y; x^3])
   K, _ = kernel(g)
-  @test iszero(det(Oscar.generator_matrix(K))*M[1])
+  @test iszero(det(generator_matrix(K))*M[1])
 end
 
 @testset "syzygies over quotient rings" begin
   R, (x,y,z) = QQ[:x, :y, :z]
   M = R[x-1 y; z x]
   I = ideal(R, det(M))
-  Q = Oscar.MPolyQuoLocRing(R, I, units_of(R))
+  Q = MPolyQuoLocRing(R, I, units_of(R))
   A = map_entries(Q, M)
   K1 = syz(A)
   K2 = syz(K1)
