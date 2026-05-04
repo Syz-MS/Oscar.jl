@@ -884,7 +884,7 @@ by submodule with 3 generators
   I_poly = shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
   n = ngens(P_poly)
-  P, _ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), n))) 
+  P, _ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:ngens(P_poly)])) 
   I = P(I_poly)
   # presentation of I:     A
   #                   P^p ––> P^k ––> I ––> 0     #k is ngens(I)
@@ -1051,9 +1051,11 @@ julia> vector_space_dim(T2)
   Ipres = present_as_cokernel(ideal_as_module(I))
   Pk = ambient_free_module(Ipres)
   Syz = SubquoModule(Pk, relations(Ipres))
-  # Not computing Kos, since Kos \subset I*O_X^k
-  iota, _ = change_base_ring(R, hom(Syz, Pk, ambient_representatives_generators(Syz)))
-  phi = dual(iota)
+  # Not computing the Koszul relations Kos, since Kos \subset I*P^k and thus 
+  # they are vanishing after changing the base ring to R = P/I.
+  iota_Syz = hom(Syz, Pk, ambient_representatives_generators(Syz))
+  iota_quo, _ = change_base_ring(R, iota_Syz)
+  phi = dual(iota_quo)
   T2, _ = cokernel(phi)
   return T2
 end
