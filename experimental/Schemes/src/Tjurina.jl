@@ -1042,7 +1042,7 @@ julia> vector_space_dim(T2)
   I_poly = shifted_ideal(defining_ideal(X))  
   P_poly = base_ring(I_poly)
   n = ngens(P_poly)
-  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, zeros(coefficient_ring(P_poly), n))) 
+  P,_ = localization(P_poly, complement_of_point_ideal(P_poly, [coefficient_ring(P_poly)(0) for i = 1:ngens(P_poly)])) 
   I = P(I_poly)  #k is ngens(I)
   R, _ = quo(P,I)
   # presentation of I:     A
