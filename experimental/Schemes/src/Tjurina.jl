@@ -1003,7 +1003,7 @@ julia> M = R[x y z u; y z u v]
 [x   y   z   u]
 [y   z   u   v]
 
-julia> X = SpaceGerm(spec(R, ideal(minors(M, 2))), zeros(QQ,5))
+julia> X = SpaceGerm(spec(R, ideal(minors(M, 2))), [0,0,0,0,0])
 Spectrum
   of localization
     of quotient
