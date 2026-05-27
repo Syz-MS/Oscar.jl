@@ -7,6 +7,7 @@ include("SpaceGerms/Objects/Attributes.jl")
 include("SpaceGerms/Objects/Methods.jl")
 include("SpaceGerms/DeterminantalUnfoldings.jl")
 include("Tjurina.jl")
+include("PHNindex.jl")
 
 include("Auxiliary.jl")
 include("critical_locus.jl")
@@ -28,6 +29,7 @@ include("ToricBlowups/methods.jl")
 
 include("Resolution_structure.jl")
 include("Resolution_tools.jl")
+
 
 
 # Exports
