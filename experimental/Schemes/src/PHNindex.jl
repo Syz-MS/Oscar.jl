@@ -1,5 +1,7 @@
 export T1_Gl_sheaf, has_only_determinantal_rigid_singularities, global_PHN_index, local_PHN_index, components, count_origin_roots,local_PHN_index_at_the_origin
 
+#TODO temporary export, remove it later
+
 function T1_Gl_sheaf(M::MatElem{<:MPolyRingElem})
   S = converted_modulus_T1_Gl(M)
   F = ambient_free_module(S)
