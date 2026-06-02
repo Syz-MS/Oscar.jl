@@ -55,11 +55,6 @@ function T1_Gl_module(M::MatElem{<:MPolyRingElem}, reorder=false)
   return T1_Gl
 end
 
-# S = converted_modulus_T1_Gl(M)
-# F = ambient_free_module(S)
-# LS_reordered = leading_module(S_reordered, invlex(F) * negdeglex(base_ring(F)))
-# T1_Gl, _ = quo(F, LS_reordered)
-
 function tjurina_Gl_number(M::MatElem{<:MPolyRingElem}, reorder=false)
   tau = vector_space_dim(T1_Gl_module(M, reorder))
   return tau == -1 ? PosInf() : tau
