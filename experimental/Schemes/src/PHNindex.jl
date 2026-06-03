@@ -1,83 +1,26 @@
-export converted_modulus_T1_Gl, T1_Gl_module, tjurina_Gl_number, T1_Gl_basis, has_only_rigid_singularities,T1_GL_sheaf, has_only_determinantal_rigid_singularities
+export T1_GL_basis, has_only_determinantally_rigid_singularities
 
 #TODO temporary export, remove it later
 
 
-export global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN_index,local_PHN_index,global_polar_multiplicities,global_euler_obstruction
+export global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN_index,local_PHN_index, global_polar_multiplicities, global_euler_obstruction, calculate_complete_roots, calcular_distancias_origem
 
-#TODO temporary export, remove it later
 
-function _S_2(A::MatElem)
-  n_rows = number_of_rows(A)
-  return [_R_ij(A, i, j) for i in 1:n_rows for j in 1:n_rows]
+
+
+function T1_GL_basis(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
+  return vector_space_basis(_T1_GL_module(M, val))
 end
 
-
-
-function _S_3(A::MatElem)
-  n_cols = number_of_columns(A)
-  return [_C_ij(A, i, j) for i in 1:n_cols for j in 1:n_cols]
-end
-
-function _J(A::MatElem{<:MPolyRingElem})
-  return [derivative.(A, i) for i in 1:ngens(parent(A[1, 1]))]
-end
-
-function _modulus_T1_Gl(M::MatElem{<:MPolyRingElem})
-  return vcat(_J(M), _S_2(M), _S_3(M))
-end
-
-function converted_modulus_T1_Gl(M::MatElem{<:MPolyRingElem})
-  L = base_ring(parent(M))
-  F = free_module(L, number_of_rows(M) * number_of_columns(M))
-  # transpose is important for rowwise linear index of vev
-  mod_T1_Gl = _modulus_T1_Gl(transpose(M))
-  S, _ = sub(F, F.(vec.(Array.(mod_T1_Gl))))
-  return S
-end
-
-function T1_Gl_module(M::MatElem{<:MPolyRingElem}, reorder=false)
-  S = converted_modulus_T1_Gl(M)
-  F = ambient_free_module(S)
-  if reorder
-    k = ngens(F)
-    F_gens = gens(F)
-    reordered_gens = vcat(
-      [F_gens[k - 1]], [F_gens[j] for j in 2:(k - 2)], [F_gens[1], F_gens[k]]
-    )
-    sigma = hom(F, F, reordered_gens)
-    S_gens = ambient_representatives_generators(S)
-    S_gens_reordered = sigma.(S_gens)
-    S, _ = sub(F, S_gens_reordered)
-  end
-  LS = leading_module(S, invlex(F) * negdeglex(base_ring(F)))
-  T1_Gl, _ = quo(F, LS)
-  return T1_Gl
-end
-
-function tjurina_Gl_number(M::MatElem{<:MPolyRingElem}, reorder=false)
-  tau = vector_space_dim(T1_Gl_module(M, reorder))
-  return tau == -1 ? PosInf() : tau
-end
-
-function T1_Gl_basis(M::MatElem{<:MPolyRingElem}, reorder=false)
-  return vector_space_basis(T1_Gl_module(M, reorder))
-end
-
-
-function T1_Gl_sheaf(M::MatElem{<:MPolyRingElem})
-  S = converted_modulus_T1_Gl(M)
-  F = ambient_free_module(S)
-  return quo(F, S)[1]
-end
 
 T1_GL_sheaf(X::DeterminantalGerm) = pre_saturated_module(T1_GL_module(X))
 
 has_only_determinantally_rigid_singularities(X::DeterminantalGerm) = is_zero(T1_GL_sheaf(X))
 
-function has_only_rigid_singularities(M::MatElem{<:MPolyRingElem})
-  return vector_space_dim(T1_Gl_sheaf(M)) == 0
+function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
+  return vector_space_dim(_T1_GL_module(M, val)) == 0
 end
+
 
 
 @doc raw"""
@@ -95,18 +38,6 @@ Return the vector space R/J.
 
 Return the dimension of the vector space R/I.
 
-    function local_PHN_multiplicity(X::DeterminantalGerm, f::MPolyRingElem, p::Vector) 
-Return the dimension of the vector space given by the localization of the _PHN_locus(X, f) at the point `p`. 
-
-function global_PHN_index(X::DeterminantalGerm{<:BRT, <:RT, <:AST}, f::MPolyRingElem, p::Vector)
-
-Return the number of zeros of the 1-form df lying on the regular part of X, that is,  
-global_auxiliar_PHN_index(X, f) - #{singular points of X}*local_PHN_multiplicity(X, f, p).
-
-function local_PHN_index(X::DeterminantalGerm, f::MPolyRingElem, epsilon::Real = 1e-4)
-Return the of zeros of the 1-form `df` lying on the regular part of `X` close to the origin, for a given `epsilon`. 
-The choice of a "sufficiently small" epsilon depends on the essential smoothing (which is supposed to be generic enough).
-
 # Example
 ```jldoctest
 julia> R, (x1, x2, x3, x4, x5, x6) = polynomial_ring(QQ, [:x1, :x2, :x3, :x4, :x5, :x6]);
@@ -119,49 +50,28 @@ julia> t = 2;
 
 julia> val_1 = QQ(-1//4000000); val_2 = QQ(-1//10); val_3 = QQ(-1//10000000);
 
-julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^4+x1*x2^2+x6^2]);
+julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^4 + x1*x2^2 + x6^2]);
 
 julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
 
 julia> M = M_vars + M_pert;
 
-julia> M_local = change_base_ring(R_local, M);
 
 julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
 
-julia> Xtil = DeterminantalGerm(M, 2, point_P)
-Spectrum
-  of localization
-    of quotient
-      of multivariate polynomial ring in 6 variables x1, x2, x3, x4, ..., x6
-        over rational field
-      by ideal with 3 generators
-    at complement of maximal ideal of point (0, 0, 0, 0, 0, 1//2000)
+julia> Xtil = DeterminantalGerm(M, 2, point_P);
 
 julia> Xtilrep = representative(Xtil);
 
 julia> Xtilrep_sing, _ = singular_locus(Xtilrep);
 
-julia> vector_space_dim(OO(singular_locus(Xtilrep)[1]))
-2
-
-julia> f = 2*x1+5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
 
 julia> global_auxiliar_PHN_index(Xtil, f)
 30
 
-julia> local_PHN_multiplicity(Xtil, f, point_P)
-7
-
-julia> global_PHN_index(Xtil, f, point_P)
-16
-
-julia> local_PHN_index(Xtil, f, 0.001)
-7
 ```
 """
-
-
 
 function _PHN_locus(X::DeterminantalGerm, f::MPolyRingElem)
   OO_repr = underlying_quotient(OO(X))
@@ -180,6 +90,39 @@ end
    return vector_space_dim(_PHN_locus(X, f))
  end
 
+@doc raw"""
+    function local_PHN_multiplicity(X::DeterminantalGerm, f::MPolyRingElem, p::Vector) 
+Return the dimension of the vector space given by the localization of the _PHN_locus(X, f) at the point `p`. 
+
+# Example
+```jldoctest
+julia> R, (x1, x2, x3, x4, x5, x6) = polynomial_ring(QQ, [:x1, :x2, :x3, :x4, :x5, :x6]);
+
+julia> origin = complement_of_point_ideal(R, [0,0,0,0,0,0]);
+
+julia> R_local, _ = localization(R, origin);
+
+julia> t = 2;
+
+julia>  val_1 = QQ(-1//4000000); 
+
+julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^4 + x1*x2^2 + x6^2]);
+
+julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
+
+julia> M = M_vars + M_pert;
+
+
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
+
+julia> Xtil = DeterminantalGerm(M, 2, point_P);
+
+julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+
+julia> local_PHN_multiplicity(Xtil,f,point_P)
+```
+"""
+
 function local_PHN_multiplicity(
      X::DeterminantalGerm{<:BRT, <:RT, <:AST}, f::MPolyRingElem, p::Vector
   ) where {BRT<:Field, RT, AST}
@@ -187,6 +130,43 @@ function local_PHN_multiplicity(
    LQ_p, _ = localization(Q, complement_of_point_ideal(base_ring(Q), p))
    return vector_space_dim(LQ_p)
  end
+
+ @doc raw"""
+    function global_PHN_index(X::DeterminantalGerm{<:BRT, <:RT, <:AST}, f::MPolyRingElem, p::Vector)
+
+Return the number of zeros of the 1-form `df` lying on the regular part of `X`, that is,  
+global_auxiliar_PHN_index(X, f) - #{singular points of X}*local_PHN_multiplicity(X, f, p).
+
+
+
+# Example
+```jldoctest
+julia> R, (x1, x2, x3, x4, x5, x6) = polynomial_ring(QQ, [:x1, :x2, :x3, :x4, :x5, :x6]);
+
+julia> origin = complement_of_point_ideal(R, [0,0,0,0,0,0]);
+
+julia> R_local, _ = localization(R, origin);
+
+julia> t = 2;
+
+julia>  val_1 = QQ(-1//4000000); 
+
+julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^4 + x1*x2^2 + x6^2]);
+
+julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
+
+julia> M = M_vars + M_pert;
+
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
+
+julia> Xtil = DeterminantalGerm(M, 2, point_P);
+
+julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+
+julia> global_PHN_index(Xtil,f,point_P)
+16
+```
+"""
 
  function global_PHN_index(
     X::DeterminantalGerm{<:BRT, <:RT, <:AST}, 
@@ -207,18 +187,14 @@ function local_PHN_multiplicity(
 end
 
 
-function _PHN_primary_decomposition(X::DeterminantalGerm, f::MPolyRingElem)
-    return primary_decomposition(modulus(_PHN_locus(X, f)))
-end
-
-"""
+@doc raw"""
     components(X::DeterminantalGerm, f::MPolyRingElem)
 
 Prints information about the primary components of the PHN locus.
 This function is intended for side effects (printing) and does not return a value.
 """
 function components(X::DeterminantalGerm, f::MPolyRingElem)
-    pd = _PHN_primary_decomposition(X, f)
+    pd = primary_decomposition(modulus(_PHN_locus(X, f)))
     for (i, (q, p)) in enumerate(pd)
         println("\n--- Component $i with multiplicity $(degree(q)) ---")
         
@@ -232,94 +208,220 @@ function components(X::DeterminantalGerm, f::MPolyRingElem)
 end
 
 
-
-function local_PHN_index(X::DeterminantalGerm, f::MPolyRingElem, epsilon::Real = 1e-4)
-    # Recebe as coordenadas complexas (AcbFieldElem)
-    raizes = _PHN_critical_roots(X, f)
-    
-    indice_local = 0
-    
-    for raiz in raizes
-        # 1. Extrai o módulo geométrico da raiz (transforma o complexo em real)
-        distancia_real = abs(raiz)
-        
-        # 2. Agora a conversão para Float64 funciona perfeitamente
-        if Float64(distancia_real) < epsilon
-            indice_local += 1
-        end
-    end
-    
-    return indice_local
-end
-
 @doc raw"""
     _PHN_critical_roots(X::DeterminantalGerm, f::MPolyRingElem)
 
-Return the coordinates of the zeros of the 1-form `df` on the regular part of `X`.
+Return the coordinates of the zeros of the 1-form `df` on the regular part of `X` and its distances from the origin.
 
-julia> all_roots =Oscar. _PHN_critical_roots(Xtil, f)
+# Example
+```jldoctest
+julia> R, (x1, x2, x3, x4, x5, x6) = polynomial_ring(QQ, [:x1, :x2, :x3, :x4, :x5, :x6]);
 
-julia> show(stdout, "text/plain", all_roots)
-16-element Vector{AcbFieldElem}:
- [-1.838439 +/- 3.42e-7]
- [-0.00016514787 +/- 6.10e-12]
- [9.26158e-5 +/- 7.42e-11]
- [9.51928e-5 +/- 6.69e-11]
- [-4.856028e-5 +/- 4.27e-12] + [-8.139445e-5 +/- 8.16e-12]*im
- [-4.856028e-5 +/- 4.27e-12] + [8.139445e-5 +/- 8.16e-12]*im
- [-3.320500e-5 +/- 5.66e-12] + [-0.00011516586 +/- 8.41e-12]*im
- [-3.320500e-5 +/- 5.66e-12] + [0.00011516586 +/- 8.41e-12]*im
- [0.005464557 +/- 7.26e-10] + [-0.005383487 +/- 6.64e-10]*im
- [0.005464557 +/- 7.26e-10] + [0.005383487 +/- 6.64e-10]*im
- [0.03982093 +/- 6.10e-9] + [-0.20155859 +/- 5.91e-9]*im
- [0.03982093 +/- 6.10e-9] + [0.20155859 +/- 5.91e-9]*im
- [-2.471698 +/- 6.15e-7] + [-0.765792 +/- 7.02e-7]*im
- [-2.471698 +/- 6.15e-7] + [0.765792 +/- 7.02e-7]*im
- [0.4885593 +/- 3.37e-8] + [-1.0215439 +/- 5.74e-8]*im
- [0.4885593 +/- 3.37e-8] + [1.0215439 +/- 5.74e-8]*im
+julia> origin = complement_of_point_ideal(R, [0,0,0,0,0,0]);
+
+julia> R_local, _ = localization(R, origin);
+
+julia> t = 2;
+
+julia>  val_1 = QQ(-1//40000000000);
+
+julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^2 + x2^2 + x6^2]);
+
+julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
+
+julia> M = M_vars + M_pert;
+
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//200000];
+
+julia> Xtil = DeterminantalGerm(M, 2, point_P);
+
+julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+
+julia> Oscar._PHN_critical_roots(Xtil,f)
+- Root 1 | Norm: [5.0000073e-6 +/- 6.92e-14]
+- Root 2 | Norm: [4.9999927e-6 +/- 7.16e-14]
+- Root 3 | Norm: [1.6778901 +/- 4.77e-8]
+- Root 4 | Norm: [1.6778901 +/- 4.77e-8]
+(Vector{AcbFieldElem}[[[-8.1649778e-7 +/- 4.30e-15], [-2.0412445e-6 +/- 5.71e-14], 0, 0, 0, [-4.4907378e-6 +/- 2.55e-14]], 
+[[8.1649538e-7 +/- 4.28e-15], [2.0412385e-6 +/- 5.71e-14], 0, 0, 0, [4.4907246e-6 +/- 2.57e-14]], 
+[[-0.13513514 +/- 6.10e-9] + [-0.23835597 +/- 5.11e-9]*im, [-0.33783784 +/- 5.25e-9] + [-0.59588993 +/- 7.78e-9]*im, 0, 0, 0, [-0.7432432 +/- 4.98e-8] + [-1.3109579 +/- 5.02e-8]*im], 
+[[-0.13513514 +/- 6.10e-9] + [0.23835597 +/- 5.11e-9]*im, [-0.33783784 +/- 5.25e-9] + [0.59588993 +/- 7.78e-9]*im, 0, 0, 0, [-0.7432432 +/- 4.98e-8] + [1.3109579 +/- 5.02e-8]*im]], 
+ArbFieldElem[[5.0000073e-6 +/- 6.92e-14], [4.9999927e-6 +/- 7.16e-14], [1.6778901 +/- 4.77e-8], [1.6778901 +/- 4.77e-8]])
 ```
 """
-function _PHN_critical_roots(X::DeterminantalGerm, f::MPolyRingElem)
-    pd = _PHN_primary_decomposition(X, f)
+
+function _PHN_critical_roots(X, f; verbose=true)
+    pd = primary_decomposition(modulus(Oscar._PHN_locus(X, f)))
     
     C = AcbField(512)
-    all_roots = elem_type(C)[] 
+    all_roots = Vector{elem_type(C)}[] 
+    all_norms = [] 
+    
+    root_index = 1 
     
     R = parent(f)
     n = nvars(R)
     R_uni, T = polynomial_ring(QQ, :T, cached=false)
     
-    # Construção do ideal singular
-    anel_base = base_ring(underlying_quotient(OO(X)))
+    R_lex, vars_lex = polynomial_ring(QQ, [string(v) for v in gens(R)], internal_ordering=:lex)
+    phi_to_lex = hom(R, R_lex, vars_lex)
+    
+    base_ring_X = base_ring(underlying_quotient(OO(X)))
     I_X = modulus(underlying_quotient(OO(X)))
     J_X = jacobian_matrix(gens(I_X))
-    I_sing = I_X + ideal(anel_base, minors(J_X, codim(X)))
+    I_sing = I_X + ideal(base_ring_X, minors(J_X, codim(X)))
+    
+    # Só imprime o cabeçalho se verbose for verdadeiro
+    if verbose 
+        println("\n=== Critical Locus Report ===") 
+    end
     
     for (q, p) in pd
-        # Filtro Algébrico: Destrói a componente se ela for a singularidade
-        I_teste = saturation(p, I_sing)
-        anel_comp = quo(R, I_teste)[1]
+        I_test = saturation(p, I_sing)
+        comp_ring = quo(R, I_test)[1]
         
-        if vector_space_dim(anel_comp) == 0
+        if vector_space_dim(comp_ring) == 0
             continue
         end
         
-        # Lógica de extração de coordenadas originais preservada
-        geradores = gens(p)
-        poly_mult = geradores[1]
+        p_lex = ideal(R_lex, [phi_to_lex(g) for g in gens(p)])
         
-        vetor_subst = fill(R_uni(0), n)
-        vetor_subst[n] = T
+        I_elim = eliminate(p_lex, vars_lex[1:n-1])
+        poly_mult = gens(I_elim)[1]
         
-        poly_uni = evaluate(poly_mult, vetor_subst)
+        subst_vector = fill(R_uni(0), n)
+        subst_vector[n] = T
+        
+        poly_uni = evaluate(poly_mult, subst_vector)
         poly_C = change_base_ring(C, poly_uni)
         
-        append!(all_roots, roots(poly_C))
+        roots_xn = roots(poly_C)
+        
+        parametrizations_C = typeof(poly_C)[]
+        for i in 1:(n-1)
+            h_i = normal_form(vars_lex[i], p_lex)
+            h_i_uni = evaluate(h_i, subst_vector)
+            push!(parametrizations_C, change_base_ring(C, h_i_uni))
+        end
+        
+        for root_n in roots_xn
+            point = elem_type(C)[]
+            
+            for i in 1:(n-1)
+                coord_i = evaluate(parametrizations_C[i], root_n)
+                push!(point, coord_i)
+            end
+            
+            push!(point, root_n)
+            
+            distance = sqrt(sum(abs(c)^2 for c in point))
+            
+            # Só imprime a raiz se verbose for verdadeiro
+            if verbose 
+                println("- Root $root_index | Distance: ", distance) 
+            end
+            
+            push!(all_roots, point)
+            push!(all_norms, distance)
+            
+            root_index += 1 
+        end
     end
     
-    return all_roots
+    if verbose 
+        println("=============================\n") 
+    end
+    
+    return all_roots, all_norms
 end
 
+@doc raw"""
+    function local_PHN_index(X::DeterminantalGerm, f::MPolyRingElem, epsilon::Real = 1e-4) 
+Return the  number of zeros of the 1-form `df` lying on the regular part of `X` close to the origin, for a given `epsilon`sz\ - 
+  the choice of a "sufficiently small" `epsilon` depends on the essential smoothing (which is supposed to be generic enough).
+
+
+
+
+# Example
+```jldoctest
+julia> R, (x1, x2, x3, x4, x5, x6) = polynomial_ring(QQ, [:x1, :x2, :x3, :x4, :x5, :x6]);
+
+julia> origin = complement_of_point_ideal(R, [0,0,0,0,0,0]);
+
+julia> R_local, _ = localization(R, origin);
+
+julia> t = 2;
+
+julia>  val_1 = QQ(-1//4000000); 
+
+julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^4 + x1*x2^2 + x6^2]);
+
+julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
+
+julia> M = M_vars + M_pert;
+
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
+
+julia> Xtil = DeterminantalGerm(M, 2, point_P);
+
+julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+
+julia> local_PHN_index(Xtil,f,0.001)
+7
+```
+"""
+
+function local_PHN_index(X::DeterminantalGerm, f::MPolyRingElem, epsilon::Real = 1e-4)
+  
+    roots, norms = _PHN_critical_roots(X, f; verbose=false)
+    
+    local_index = 0
+    
+    
+    for distance in norms
+        if Float64(distance) < epsilon
+            local_index += 1
+        end
+    end
+    
+    return local_index
+end
+
+@doc raw"""
+    function global_polar_multiplicities(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector; print_list::Bool=true) 
+Return a list of the global polar multiplicities of a determinantal singularity. 
+The list is ordered as follows: [alpha_0, alpha_1, alpha_2, ...], where alpha_0 is the global PHN index of the original variety 
+and alpha_k is the global PHN index of the variety obtained by intersecting the original variety with a generic hyperplane k times.
+
+
+
+# Example
+```jldoctest
+julia> R, (x1, x2, x3, x4, x5, x6) = polynomial_ring(QQ, [:x1, :x2, :x3, :x4, :x5, :x6]);
+
+julia> origin = complement_of_point_ideal(R, [0,0,0,0,0,0]);
+
+julia> R_local, _ = localization(R, origin);
+
+julia> t = 2;
+
+julia>  val_1 = QQ(-1//4000000);
+
+julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^2 + x2^2 + x6^2]);
+
+julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
+
+julia> M = M_vars + M_pert;
+
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
+
+julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+
+julia> global_polar_multiplicities(M,2,f,point_P)
+Sequence of Polar Multiplicities: [4, 10, 13, 8]
+```
+"""
 
 function global_polar_multiplicities(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector; print_list::Bool=true)
     R = parent(f)
@@ -409,20 +511,47 @@ function global_polar_multiplicities(M::MatrixElem, t::Int, f::MPolyRingElem, po
     return alphas
 end
 
-function global_euler_obstruction(alphas::Vector{Int})
+@doc raw"""
+    function global_euler_obstruction(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector)
+Return the Euler obstruction of a determinantal singularity.
+The Euler obstruction is the alternating sum of the global polar multiplicities.
+
+# Example
+```jldoctest
+julia> R, (x1, x2, x3, x4, x5, x6) = polynomial_ring(QQ, [:x1, :x2, :x3, :x4, :x5, :x6]);
+
+julia> origin = complement_of_point_ideal(R, [0,0,0,0,0,0]);
+
+julia> R_local, _ = localization(R, origin);
+
+julia> t = 2;
+
+julia>  val_1 = QQ(-1//4000000);
+
+julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^2 + x2^2 + x6^2]);
+
+julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
+
+julia> M = M_vars + M_pert;
+
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
+
+julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+
+julia> global_euler_obstruction(M,2,f,point_P)
+-1
+```
+"""
+
+function global_euler_obstruction(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector)
+    # 1. Extrai a lista de multiplicidades polares em silêncio
+    alphas = global_polar_multiplicities(M, t, f, point_P; print_list=false)
+    
+    # 2. Calcula a obstrução de Euler (soma alternada)
     eu_obstruction = 0
     for i in 1:length(alphas)
         eu_obstruction += (-1)^(i - 1) * alphas[i]
     end
-    return eu_obstruction
-end
-
-function global_euler_obstruction(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector)
-    # 1. Extrai a lista chamando a sua função arrumada
-    alphas = global_polar_multiplicities(M, t, f, point_P;print_list=false)
-    
-    # 2. Envia a lista automaticamente para o Motor Matemático acima
-    eu_obstruction = global_euler_obstruction(alphas)    
     
     return eu_obstruction
 end
