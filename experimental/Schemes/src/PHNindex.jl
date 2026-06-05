@@ -3,7 +3,8 @@ export T1_GL_basis, has_only_determinantally_rigid_singularities
 #TODO temporary export, remove it later
 
 
-export global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN_index,local_PHN_index, global_polar_multiplicities, global_euler_obstruction, calculate_complete_roots, calcular_distancias_origem
+export global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN_index,local_PHN_index, global_polar_multiplicities, global_euler_obstruction
+#, calculate_complete_roots, calcular_distancias_origem
 
 
 
