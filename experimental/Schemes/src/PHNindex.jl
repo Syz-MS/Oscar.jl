@@ -9,7 +9,7 @@ export global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN
 
 
 
-function T1_GL_basis(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
+function T1_GL_basis(M::MatElem{<:MPolyRingElem}; val::Type = Val{:generic})
   return vector_space_basis(_T1_GL_module(M, val))
 end
 
@@ -18,7 +18,7 @@ T1_GL_sheaf(X::DeterminantalGerm) = pre_saturated_module(T1_GL_module(X))
 
 has_only_determinantally_rigid_singularities(X::DeterminantalGerm) = is_zero(T1_GL_sheaf(X))
 
-function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
+function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; val::Type = Val{:generic})
   return vector_space_dim(_T1_GL_module(M, val)) == 0
 end
 
