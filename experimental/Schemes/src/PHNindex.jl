@@ -8,8 +8,8 @@ export intersect_matrix_linear_form, slice_variety, global_auxiliar_PHN_index, l
 
 export apply_random_linear_change, auxiliar_number_of_critical_points, local_critical_multiplicity, regular_critical_points_of_a_function_isol, regular_critical_points_of_a_function, global_regular_critical_points, local_regular_critical_points
 
-function T1_GL_basis(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
-  return vector_space_basis(_T1_GL_module(M, val = val))
+function T1_GL_basis(M::MatElem{<:MPolyRingElem}; mat_type::Symbol = :generic)
+  return vector_space_basis(_T1_GL_module(M, mat_type = mat_type))
 end
 
 
@@ -17,8 +17,8 @@ T1_GL_sheaf(X::DeterminantalGerm) = pre_saturated_module(T1_GL_module(X))
 
 has_only_determinantally_rigid_singularities(X::DeterminantalGerm) = is_zero(T1_GL_sheaf(X))
 
-function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
-  return vector_space_dim(_T1_GL_module(M, val = val)) == 0
+function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; mat_type::Symbol = :generic)
+  return vector_space_dim(_T1_GL_module(M, mat_type = mat_type)) == 0
 end
 
 
