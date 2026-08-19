@@ -3,13 +3,13 @@ export T1_GL_basis, has_only_determinantally_rigid_singularities
 #TODO temporary export, remove it later
 
 
-export global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN_index,local_PHN_index, global_polar_multiplicities, global_euler_obstruction, calculate_complete_roots, calcular_distancias_origem
+export intersect_matrix_linear_form, slice_variety, global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN_index,local_PHN_index, global_polar_multiplicities, global_euler_obstruction, local_polar_multiplicities
 
 
-
+export apply_random_linear_change, auxiliar_number_of_critical_points, local_critical_multiplicity, regular_critical_points_of_a_function_isol, regular_critical_points_of_a_function, global_regular_critical_points, local_regular_critical_points
 
 function T1_GL_basis(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
-  return vector_space_basis(_T1_GL_module(M, val))
+  return vector_space_basis(_T1_GL_module(M, val = val))
 end
 
 
@@ -18,7 +18,7 @@ T1_GL_sheaf(X::DeterminantalGerm) = pre_saturated_module(T1_GL_module(X))
 has_only_determinantally_rigid_singularities(X::DeterminantalGerm) = is_zero(T1_GL_sheaf(X))
 
 function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; val::Val = Val(:generic))
-  return vector_space_dim(_T1_GL_module(M, val)) == 0
+  return vector_space_dim(_T1_GL_module(M, val = val)) == 0
 end
 
 
@@ -72,7 +72,6 @@ julia> global_auxiliar_PHN_index(Xtil, f)
 
 ```
 """
-
 function _PHN_locus(X::DeterminantalGerm, f::MPolyRingElem)
   OO_repr = underlying_quotient(OO(X))
   R = base_ring(OO_repr)
@@ -86,7 +85,7 @@ function _PHN_locus(X::DeterminantalGerm, f::MPolyRingElem)
 end
 
 
- function global_auxiliar_PHN_index(X::DeterminantalGerm, f::MPolyRingElem)
+function global_auxiliar_PHN_index(X::DeterminantalGerm, f::MPolyRingElem)
    return vector_space_dim(_PHN_locus(X, f))
  end
 
@@ -104,7 +103,7 @@ julia> R_local, _ = localization(R, origin);
 
 julia> t = 2;
 
-julia>  val_1 = QQ(-1//4000000); 
+julia> val_1 = QQ(-1//40000000000);
 
 julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^4 + x1*x2^2 + x6^2]);
 
@@ -112,17 +111,16 @@ julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
 
 julia> M = M_vars + M_pert;
 
-
-julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//200000];
 
 julia> Xtil = DeterminantalGerm(M, 2, point_P);
 
-julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+julia> f = 2*x1+5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
 
 julia> local_PHN_multiplicity(Xtil,f,point_P)
+7
 ```
 """
-
 function local_PHN_multiplicity(
      X::DeterminantalGerm{<:BRT, <:RT, <:AST}, f::MPolyRingElem, p::Vector
   ) where {BRT<:Field, RT, AST}
@@ -131,13 +129,12 @@ function local_PHN_multiplicity(
    return vector_space_dim(LQ_p)
  end
 
+
  @doc raw"""
     function global_PHN_index(X::DeterminantalGerm{<:BRT, <:RT, <:AST}, f::MPolyRingElem, p::Vector)
 
 Return the number of zeros of the 1-form `df` lying on the regular part of `X`, that is,  
 global_auxiliar_PHN_index(X, f) - #{singular points of X}*local_PHN_multiplicity(X, f, p).
-
-
 
 # Example
 ```jldoctest
@@ -167,8 +164,7 @@ julia> global_PHN_index(Xtil,f,point_P)
 16
 ```
 """
-
- function global_PHN_index(
+function global_PHN_index(
     X::DeterminantalGerm{<:BRT, <:RT, <:AST}, 
     f::MPolyRingElem, 
     p::Vector
@@ -223,7 +219,7 @@ julia> R_local, _ = localization(R, origin);
 
 julia> t = 2;
 
-julia>  val_1 = QQ(-1//40000000000);
+julia> val_1 = QQ(-1//40000000000);
 
 julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^2 + x2^2 + x6^2]);
 
@@ -233,115 +229,189 @@ julia> M = M_vars + M_pert;
 
 julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//200000];
 
+julia> f = 2*x1+5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+
 julia> Xtil = DeterminantalGerm(M, 2, point_P);
 
-julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
-
 julia> Oscar._PHN_critical_roots(Xtil,f)
-- Root 1 | Norm: [5.0000073e-6 +/- 6.92e-14]
-- Root 2 | Norm: [4.9999927e-6 +/- 7.16e-14]
-- Root 3 | Norm: [1.6778901 +/- 4.77e-8]
-- Root 4 | Norm: [1.6778901 +/- 4.77e-8]
-(Vector{AcbFieldElem}[[[-8.1649778e-7 +/- 4.30e-15], [-2.0412445e-6 +/- 5.71e-14], 0, 0, 0, [-4.4907378e-6 +/- 2.55e-14]], 
-[[8.1649538e-7 +/- 4.28e-15], [2.0412385e-6 +/- 5.71e-14], 0, 0, 0, [4.4907246e-6 +/- 2.57e-14]], 
-[[-0.13513514 +/- 6.10e-9] + [-0.23835597 +/- 5.11e-9]*im, [-0.33783784 +/- 5.25e-9] + [-0.59588993 +/- 7.78e-9]*im, 0, 0, 0, [-0.7432432 +/- 4.98e-8] + [-1.3109579 +/- 5.02e-8]*im], 
-[[-0.13513514 +/- 6.10e-9] + [0.23835597 +/- 5.11e-9]*im, [-0.33783784 +/- 5.25e-9] + [0.59588993 +/- 7.78e-9]*im, 0, 0, 0, [-0.7432432 +/- 4.98e-8] + [1.3109579 +/- 5.02e-8]*im]], 
-ArbFieldElem[[5.0000073e-6 +/- 6.92e-14], [4.9999927e-6 +/- 7.16e-14], [1.6778901 +/- 4.77e-8], [1.6778901 +/- 4.77e-8]])
+
+=== Critical Locus Report ===
+- Root 1 | Distance: [5.0000073e-6 +/- 6.92e-14]
+- Root 2 | Distance: [4.9999927e-6 +/- 7.16e-14]
+- Root 3 | Distance: [1.6778901 +/- 4.77e-8]
+- Root 4 | Distance: [1.6778901 +/- 4.77e-8]
+=============================
+
+(Vector{AcbFieldElem}[[[-8.1649778e-7 +/- 4.30e-15], [-2.0412445e-6 +/- 5.71e-14], 0, 0, 0, [-4.4907378e-6 +/- 2.55e-14]], [[8.1649538e-7 +/- 4.28e-15], [2.0412385e-6 +/- 5.71e-14], 0, 0, 0, [4.4907246e-6 +/- 2.57e-14]], [[-0.13513514 +/- 6.10e-9] + [-0.23835597 +/- 5.11e-9]*im, [-0.33783784 +/- 5.25e-9] + [-0.59588993 +/- 7.78e-9]*im, 0, 0, 0, [-0.7432432 +/- 4.98e-8] + [-1.3109579 +/- 5.02e-8]*im], [[-0.13513514 +/- 6.10e-9] + [0.23835597 +/- 5.11e-9]*im, [-0.33783784 +/- 5.25e-9] + [0.59588993 +/- 7.78e-9]*im, 0, 0, 0, [-0.7432432 +/- 4.98e-8] + [1.3109579 +/- 5.02e-8]*im]], Any[[5.0000073e-6 +/- 6.92e-14], [4.9999927e-6 +/- 7.16e-14], [1.6778901 +/- 4.77e-8], [1.6778901 +/- 4.77e-8]])
 ```
 """
+# 2. FUNÇÃO SOBRECARREGADA (Usada quando is_parametric = true)
+function apply_random_linear_change(I::MPolyIdeal, n_spatial::Int)
+    R = base_ring(I)
+    N = nvars(R)
+    vars_R = gens(R)
+    
+    M = zero_matrix(QQ, n_spatial, n_spatial)
+    while true
+        M = matrix(QQ, rand(-3:3, n_spatial, n_spatial)) 
+        if det(M) != 0
+            break
+        end
+    end
+    
+    new_vars = typeof(vars_R[1])[]
+    # Mistura apenas as variáveis espaciais
+    for i in 1:n_spatial
+        push!(new_vars, sum(M[i, j] * vars_R[j] for j in 1:n_spatial))
+    end
+    # Preserva as variáveis de parâmetro inalteradas
+    for i in (n_spatial+1):N
+        push!(new_vars, vars_R[i])
+    end
+    
+    phi = hom(R, R, new_vars)
+    I_transformed = ideal(R, [phi(g) for g in gens(I)])
+    
+    return I_transformed, M
+end
 
 function _PHN_critical_roots(X, f; verbose=true)
+
     pd = primary_decomposition(modulus(Oscar._PHN_locus(X, f)))
-    
+
     C = AcbField(512)
-    all_roots = Vector{elem_type(C)}[] 
-    all_norms = [] 
-    
-    root_index = 1 
-    
+
+    all_roots = Vector{elem_type(C)}[]
+
+    all_norms = []
+
+    root_index = 1
+
     R = parent(f)
+
     n = nvars(R)
+
     R_uni, T = polynomial_ring(QQ, :T, cached=false)
-    
+
     R_lex, vars_lex = polynomial_ring(QQ, [string(v) for v in gens(R)], internal_ordering=:lex)
+
     phi_to_lex = hom(R, R_lex, vars_lex)
-    
+
     base_ring_X = base_ring(underlying_quotient(OO(X)))
+
     I_X = modulus(underlying_quotient(OO(X)))
+
     J_X = jacobian_matrix(gens(I_X))
+
     I_sing = I_X + ideal(base_ring_X, minors(J_X, codim(X)))
-    
-    # Só imprime o cabeçalho se verbose for verdadeiro
-    if verbose 
-        println("\n=== Critical Locus Report ===") 
+
+    if verbose
+
+        println("\n=== Critical Locus Report ===")
+
     end
-    
+   
     for (q, p) in pd
+
         I_test = saturation(p, I_sing)
-        comp_ring = quo(R, I_test)[1]
-        
+
+        comp_ring = quo(R, I_test)[1]    
+
         if vector_space_dim(comp_ring) == 0
+
             continue
+
         end
-        
-        p_lex = ideal(R_lex, [phi_to_lex(g) for g in gens(p)])
-        
+
+        I_gen_pos, M_transform = apply_random_linear_change(I_test)
+
+        p_lex = ideal(R_lex, [phi_to_lex(g) for g in gens(I_gen_pos)])
+
         I_elim = eliminate(p_lex, vars_lex[1:n-1])
+
         poly_mult = gens(I_elim)[1]
-        
+
         subst_vector = fill(R_uni(0), n)
+
         subst_vector[n] = T
-        
+
         poly_uni = evaluate(poly_mult, subst_vector)
+
+         if verbose
+
+            println("\n-> Polinômio Univariado (poly_uni):")
+
+            println(poly_uni)
+
+            println("-----------------------------")
+
+        end
+
         poly_C = change_base_ring(C, poly_uni)
-        
+
         roots_xn = roots(poly_C)
-        
+
         parametrizations_C = typeof(poly_C)[]
+
         for i in 1:(n-1)
+
             h_i = normal_form(vars_lex[i], p_lex)
+
             h_i_uni = evaluate(h_i, subst_vector)
+
             push!(parametrizations_C, change_base_ring(C, h_i_uni))
+
         end
-        
+
         for root_n in roots_xn
+
             point = elem_type(C)[]
-            
+
             for i in 1:(n-1)
+
                 coord_i = evaluate(parametrizations_C[i], root_n)
+
                 push!(point, coord_i)
+
             end
-            
+
             push!(point, root_n)
-            
+
             distance = sqrt(sum(abs(c)^2 for c in point))
-            
+
             # Só imprime a raiz se verbose for verdadeiro
-            if verbose 
-                println("- Root $root_index | Distance: ", distance) 
+
+            if verbose
+
+                println("- Root $root_index | Distance: ", distance)
+
             end
-            
+
             push!(all_roots, point)
+
             push!(all_norms, distance)
-            
-            root_index += 1 
+
+            root_index += 1
+
         end
+
     end
-    
-    if verbose 
-        println("=============================\n") 
-    end
-    
+
     return all_roots, all_norms
-end
+
+end 
+
 
 @doc raw"""
     function local_PHN_index(X::DeterminantalGerm, f::MPolyRingElem, epsilon::Real = 1e-4) 
 Return the  number of zeros of the 1-form `df` lying on the regular part of `X` close to the origin, for a given `epsilon`sz\ - 
   the choice of a "sufficiently small" `epsilon` depends on the essential smoothing (which is supposed to be generic enough).
 
-
-
+!!! warning
+    The choice of `epsilon` is crucial for the correctness of the result. It should be small enough to capture only the critical points that are 
+        close to the origin, but not too small to miss any relevant critical points. In practice, one may need to experiment with different values 
+        of `epsilon` to find an appropriate threshold for a given problem.
+    The 1-form used in the function is assumed to be either generic enough or a generic deformation of a given 1-form so that all critical points are non-degenerate.
 
 # Example
 ```jldoctest
@@ -353,7 +423,7 @@ julia> R_local, _ = localization(R, origin);
 
 julia> t = 2;
 
-julia>  val_1 = QQ(-1//4000000); 
+julia> val_1 = QQ(-1//40000000000);
 
 julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^4 + x1*x2^2 + x6^2]);
 
@@ -361,17 +431,16 @@ julia> M_pert = matrix(R, 2, 3, [ R(0), R(0), R(0),  R(0),  R(0), val_1]);
 
 julia> M = M_vars + M_pert;
 
-julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
+julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//200000];
 
 julia> Xtil = DeterminantalGerm(M, 2, point_P);
 
-julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+julia> f = 2*x1+5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
 
 julia> local_PHN_index(Xtil,f,0.001)
 7
 ```
 """
-
 function local_PHN_index(X::DeterminantalGerm, f::MPolyRingElem, epsilon::Real = 1e-4)
   
     roots, norms = _PHN_critical_roots(X, f; verbose=false)
@@ -390,11 +459,10 @@ end
 
 @doc raw"""
     function global_polar_multiplicities(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector; print_list::Bool=true) 
+
 Return a list of the global polar multiplicities of a determinantal singularity. 
 The list is ordered as follows: [alpha_0, alpha_1, alpha_2, ...], where alpha_0 is the global PHN index of the original variety 
 and alpha_k is the global PHN index of the variety obtained by intersecting the original variety with a generic hyperplane k times.
-
-
 
 # Example
 ```jldoctest
@@ -406,7 +474,7 @@ julia> R_local, _ = localization(R, origin);
 
 julia> t = 2;
 
-julia>  val_1 = QQ(-1//4000000);
+julia> val_1=QQ(-1//4000000); val_2=QQ(-1//10); val_3=QQ(-1//10000000);
 
 julia> M_vars = matrix(R, 2, 3, [x1, x2, x3, x4, x5, x1^2 + x2^2 + x6^2]);
 
@@ -416,13 +484,18 @@ julia> M = M_vars + M_pert;
 
 julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
 
-julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
+julia> f = 2*x1+5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
 
 julia> global_polar_multiplicities(M,2,f,point_P)
-Sequence of Polar Multiplicities: [4, 10, 13, 8]
+Sequence of Polar Multiplicities: [4, 10, 13, 8, 2]
+5-element Vector{Int64}:
+  4
+ 10
+ 13
+  8
+  2
 ```
 """
-
 function global_polar_multiplicities(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector; print_list::Bool=true)
     R = parent(f)
     base_R = base_ring(R)
@@ -446,7 +519,7 @@ function global_polar_multiplicities(M::MatrixElem, t::Int, f::MPolyRingElem, po
     
     d = dim(underlying_quotient(OO(X_0)))
     
-    for k in 1:(d-1)
+    for k in 1:d
        # println("\nCalculating for k = $k...")
         
         coeffs = [rand(-20:20) for _ in 1:length(current_vars)]
@@ -513,6 +586,7 @@ end
 
 @doc raw"""
     function global_euler_obstruction(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector)
+
 Return the Euler obstruction of a determinantal singularity.
 The Euler obstruction is the alternating sum of the global polar multiplicities.
 
@@ -539,10 +613,9 @@ julia> point_P = [QQ(0), QQ(0), QQ(0), QQ(0), QQ(0), 1//2000];
 julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
 
 julia> global_euler_obstruction(M,2,f,point_P)
--1
+1
 ```
 """
-
 function global_euler_obstruction(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector)
     # 1. Extrai a lista de multiplicidades polares em silêncio
     alphas = global_polar_multiplicities(M, t, f, point_P; print_list=false)
@@ -555,3 +628,252 @@ function global_euler_obstruction(M::MatrixElem, t::Int, f::MPolyRingElem, point
     
     return eu_obstruction
 end
+
+
+
+
+function _critical_locus_of_a_function(X::AbsAffineScheme, f::MPolyRingElem)
+    Q = coordinate_ring(X)
+    
+    # 1. Tratamento da hierarquia de anéis
+    if Q isa MPolyRing
+        # Caso X seja o espaço afim inteiro (C^n)
+        R = Q
+        I_X = ideal(R, 0) # Ideal nulo, pois não há equações de restrição
+        eqs = [f]         # A Jacobiana será apenas o gradiente de f
+    else
+        # Caso X seja uma subvariedade (anel quociente)
+        R = base_ring(Q)
+        I_X = modulus(Q)
+        eqs = vcat(gens(I_X), [f])
+    end
+    
+    # 2. Validação de segurança
+    @req R === parent(f) "O polinômio 'f' não pertence ao anel ambiente de 'X'"
+    
+    # 3. Calcula a codimensão de X
+    c = dim(R) - dim(X)
+    
+    # 4. Monta a matriz Jacobiana
+    J_total = jacobian_matrix(eqs)
+    
+    # 5. Extrai os menores de ordem (c + 1)
+    polys_crit = minors(J_total, c + 1)
+    
+    # 6. Constrói o novo ideal crítico e retorna o anel quociente
+    I_crit = I_X + ideal(R, polys_crit)
+    return quo(R, I_crit)[1]
+end
+
+
+function apply_random_linear_change(I::MPolyIdeal)
+    R = base_ring(I)
+    n = nvars(R)
+    vars_R = gens(R)
+    
+    # Gera matriz invertível com coeficientes racionais pequenos
+    M = zero_matrix(QQ, n, n)
+    while true
+        M = matrix(QQ, rand(-3:3, n, n)) 
+        if det(M) != 0
+            break
+        end
+    end
+    
+    # Substituição linear
+    new_vars = [sum(M[i, j] * vars_R[j] for j in 1:n) for i in 1:n]
+    phi = hom(R, R, new_vars)
+    I_transformed = ideal(R, [phi(g) for g in gens(I)])
+    
+    return I_transformed, M
+end
+
+function apply_random_linear_change(I::MPolyIdeal, n_spatial::Int)
+    R = base_ring(I)
+    N = nvars(R)
+    vars_R = gens(R)
+    
+    M = zero_matrix(QQ, n_spatial, n_spatial)
+    while true
+        M = matrix(QQ, rand(-3:3, n_spatial, n_spatial)) 
+        if det(M) != 0
+            break
+        end
+    end
+    
+    new_vars = typeof(vars_R[1])[]
+    # Mistura apenas as variáveis espaciais
+    for i in 1:n_spatial
+        push!(new_vars, sum(M[i, j] * vars_R[j] for j in 1:n_spatial))
+    end
+    # Preserva as variáveis de parâmetro inalteradas
+    for i in (n_spatial+1):N
+        push!(new_vars, vars_R[i])
+    end
+    
+    phi = hom(R, R, new_vars)
+    I_transformed = ideal(R, [phi(g) for g in gens(I)])
+    
+    return I_transformed, M
+end
+
+function _critical_roots(X::AbsAffineScheme, f::MPolyRingElem; verbose=true)
+     # Extrai o lugar crítico
+    Q_crit = Oscar._critical_locus_of_a_function(X, f)
+    I_crit = modulus(Q_crit)
+    pd = primary_decomposition(I_crit)
+    
+    C = AcbField(512)
+    all_roots = Vector{elem_type(C)}[] 
+    all_norms = [] 
+    root_index = 1 
+    
+    R = parent(f)
+    n = nvars(R)
+    R_uni, T = polynomial_ring(QQ, :T, cached=false)
+    R_lex, vars_lex = polynomial_ring(QQ, [string(v) for v in gens(R)], internal_ordering=:lex)
+    phi_to_lex = hom(R, R_lex, vars_lex)
+    
+   
+    Q = coordinate_ring(X)
+    if Q isa MPolyRing
+        # Se X é o espaço afim todo, não há singularidades
+        I_sing = ideal(R, 1) # Ideal unitário, pois não há pontos singulares
+    else
+        # Se X é subvariedade, calcula a Jacobiana normalmente
+        I_X = modulus(Q)
+        J_X = jacobian_matrix(gens(I_X))
+        I_sing = I_X + ideal(R, minors(J_X, dim(R) - dim(X)))
+    end
+    # ===============================================
+    
+    if verbose 
+        println("\n=== Critical Locus Report ===") 
+    end
+    
+    for (q, p) in pd
+        # Saturação para manter apenas componentes regulares
+        I_test = saturation(p, I_sing)
+        comp_ring = quo(R, I_test)[1]
+        
+        if vector_space_dim(comp_ring) == 0
+            continue
+        end
+        
+        # Aplica a mudança de posição genérica
+        I_gen_pos, M_transform = apply_random_linear_change(I_test)
+        
+        p_lex = ideal(R_lex, [phi_to_lex(g) for g in gens(I_gen_pos)])
+        
+        I_elim = eliminate(p_lex, vars_lex[1:n-1])
+        poly_mult = gens(I_elim)[1]
+        
+        subst_vector = fill(R_uni(0), n)
+        subst_vector[n] = T
+        
+        poly_uni = evaluate(poly_mult, subst_vector)
+        #if verbose
+         #   println("\n-> Polinômio Univariado (poly_uni):")
+          #  println(poly_uni)
+           # println("-----------------------------")
+        #end
+
+        poly_C = change_base_ring(C, poly_uni)
+
+        
+        
+        roots_xn = roots(poly_C)
+        
+        parametrizations_C = typeof(poly_C)[]
+        for i in 1:(n-1)
+            h_i = normal_form(vars_lex[i], p_lex)
+            h_i_uni = evaluate(h_i, subst_vector)
+            push!(parametrizations_C, change_base_ring(C, h_i_uni))
+        end
+        
+        for root_n in roots_xn
+            point_transformed = elem_type(C)[]
+            
+            for i in 1:(n-1)
+                coord_i = evaluate(parametrizations_C[i], root_n)
+                push!(point_transformed, coord_i)
+            end
+            push!(point_transformed, root_n)
+            
+            # === Reverte as coordenadas transformadas ===
+            original_point = elem_type(C)[]
+            for i in 1:n
+                coord = sum(C(M_transform[i, j]) * point_transformed[j] for j in 1:n)
+                push!(original_point, coord)
+            end
+            
+            distance = sqrt(sum(abs(c)^2 for c in original_point))
+            
+            if verbose 
+                println("- Root $root_index | Distance: ", distance) 
+            end
+            
+            push!(all_roots, original_point)
+            push!(all_norms, distance)
+            
+            root_index += 1 
+        end
+    end
+    
+    if verbose 
+        println("=============================\n") 
+    end
+    
+    return all_roots, all_norms
+end
+
+function global_regular_critical_points(X::AbsAffineScheme, f::MPolyRingElem)
+    # 1. Extrai o lugar crítico e faz a decomposição
+    Q_crit = _critical_locus_of_a_function(X, f)
+    I_crit = modulus(Q_crit)
+    pd = primary_decomposition(I_crit)
+    
+    R = parent(f)
+    
+    # 2. Constrói o ideal singular da variedade
+    I_X = modulus(coordinate_ring(X))
+    J_X = jacobian_matrix(gens(I_X))
+    I_sing = I_X + ideal(R, minors(J_X, dim(R) - dim(X)))
+    
+    total_regular_points = 0
+    
+    # 3. Itera sobre as componentes e conta as raízes regulares
+    for (q, p) in pd
+        # A saturação remove as partes que estão contidas em I_sing
+        I_test = saturation(p, I_sing)
+        comp_ring = quo(R, I_test)[1]
+        
+        # A dimensão do espaço vetorial K-álgebra nos dá o número de raízes
+        dim_local = vector_space_dim(comp_ring)
+        
+        if dim_local > 0
+            total_regular_points += dim_local
+        end
+    end
+    
+    return total_regular_points
+end
+
+function local_regular_critical_points(X::AbsAffineScheme, f::MPolyRingElem, epsilon::Real = 1e-4)
+  
+    roots, norms =  _critical_roots(X, f; verbose=false)
+    
+    local_index = 0
+    
+    
+    for distance in norms
+        if Float64(distance) < epsilon
+            local_index += 1
+        end
+    end
+    
+    return local_index
+end
+
+
+
