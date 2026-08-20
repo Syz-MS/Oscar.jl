@@ -9,8 +9,8 @@ export global_auxiliar_PHN_index, local_PHN_multiplicity, components, global_PHN
 
 
 
-function T1_GL_basis(M::MatElem{<:MPolyRingElem}; val::Type = Val{:generic})
-  return vector_space_basis(_T1_GL_module(M, val))
+function T1_GL_basis(M::MatElem{<:MPolyRingElem}; mat_type::Symbol = :generic)
+  return vector_space_basis(T1_GL_module(M, mat_type=mat_type))
 end
 
 
@@ -18,8 +18,8 @@ T1_GL_sheaf(X::DeterminantalGerm) = pre_saturated_module(T1_GL_module(X))
 
 has_only_determinantally_rigid_singularities(X::DeterminantalGerm) = is_zero(T1_GL_sheaf(X))
 
-function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; val::Type = Val{:generic})
-  return vector_space_dim(_T1_GL_module(M, val)) == 0
+function has_only_determinantally_rigid_singularities(M::MatElem{<:MPolyRingElem}; mat_type::Symbol = :generic)
+  return vector_space_dim(T1_GL_module(M, mat_type=mat_type)) == 0
 end
 
 
@@ -73,7 +73,6 @@ julia> global_auxiliar_PHN_index(Xtil, f)
 
 ```
 """
-
 function _PHN_locus(X::DeterminantalGerm, f::MPolyRingElem)
   OO_repr = underlying_quotient(OO(X))
   R = base_ring(OO_repr)
@@ -123,7 +122,6 @@ julia> f = 2*x1 + 5*x2 + 3*x3 - 5*x4 - 7*x5 + 11*x6;
 julia> local_PHN_multiplicity(Xtil,f,point_P)
 ```
 """
-
 function local_PHN_multiplicity(
      X::DeterminantalGerm{<:BRT, <:RT, <:AST}, f::MPolyRingElem, p::Vector
   ) where {BRT<:Field, RT, AST}
@@ -168,7 +166,6 @@ julia> global_PHN_index(Xtil,f,point_P)
 16
 ```
 """
-
  function global_PHN_index(
     X::DeterminantalGerm{<:BRT, <:RT, <:AST}, 
     f::MPolyRingElem, 
@@ -250,7 +247,6 @@ julia> Oscar._PHN_critical_roots(Xtil,f)
 ArbFieldElem[[5.0000073e-6 +/- 6.92e-14], [4.9999927e-6 +/- 7.16e-14], [1.6778901 +/- 4.77e-8], [1.6778901 +/- 4.77e-8]])
 ```
 """
-
 function _PHN_critical_roots(X, f; verbose=true)
     pd = primary_decomposition(modulus(Oscar._PHN_locus(X, f)))
     
@@ -372,7 +368,6 @@ julia> local_PHN_index(Xtil,f,0.001)
 7
 ```
 """
-
 function local_PHN_index(X::DeterminantalGerm, f::MPolyRingElem, epsilon::Real = 1e-4)
   
     roots, norms = _PHN_critical_roots(X, f; verbose=false)
@@ -423,7 +418,6 @@ julia> global_polar_multiplicities(M,2,f,point_P)
 Sequence of Polar Multiplicities: [4, 10, 13, 8]
 ```
 """
-
 function global_polar_multiplicities(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector; print_list::Bool=true)
     R = parent(f)
     base_R = base_ring(R)
@@ -543,7 +537,6 @@ julia> global_euler_obstruction(M,2,f,point_P)
 -1
 ```
 """
-
 function global_euler_obstruction(M::MatrixElem, t::Int, f::MPolyRingElem, point_P::Vector)
     # 1. Extrai a lista de multiplicidades polares em silêncio
     alphas = global_polar_multiplicities(M, t, f, point_P; print_list=false)
